@@ -12,19 +12,24 @@ export default class StateMachine {
     run(params) {
         let nextState = this.currState.exec(params);
         
-        if(nextState!==this.currState.name) this.swap(nextState);
-        else this.currState.draw(params);
+        if(nextState==='') {
+            this.stateChangeCallback(this.currState,null,params);
+            return;
+        }
 
+        if(nextState!==this.currState.name) this.swap(nextState);
+        
+        this.draw(params);
         setTimeout(()=>{
             this.run(params);
         },1000/60);
     }
+    draw(params) {
+        this.currState.draw(params);
+    }
     swap(stateName) {
         let nextState = this.states.find(state=>state.name === stateName);
-        if(!nextState) {
-            console.log(`State ${stateName} not found.`);
-            return;
-        }
+        
         let params = this.currState.exit();
         this.stateChangeCallback(this.currState,nextState,params);
         this.currState = nextState;

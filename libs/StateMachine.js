@@ -7,22 +7,17 @@ export default class StateMachine {
     }
     init(params) {
         this.currState.init(params);
-        this.run(params);
     }
     run(params) {
         let nextState = this.currState.exec(params);
         
         if(nextState==='') {
             this.stateChangeCallback(this.currState,null,params);
+            this.currState = null;
             return;
         }
 
         if(nextState!==this.currState.name) this.swap(nextState);
-        
-        this.draw(params);
-        setTimeout(()=>{
-            this.run(params);
-        },1000/60);
     }
     draw(params) {
         this.currState.draw(params);
@@ -45,7 +40,8 @@ export class State {
         exec = ()=>{},
         exit = ()=>{},
         draw = ()=>{},
-        renderer
+        renderer,
+        inputManager
     } = {}) {
         this.name = name;
         this.params = params;
@@ -54,6 +50,7 @@ export class State {
         this.exit = exit.bind(this);
         this.draw = draw.bind(this);
         this.renderer = renderer;
+        this.inputManager = inputManager;
         return this;
     }
 }

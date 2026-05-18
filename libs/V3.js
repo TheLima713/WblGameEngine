@@ -12,9 +12,15 @@ export default class V3 {
   static FRONT = new V3(0, 0, 1);
   static BACK = new V3(0, 0, -1);
   constructor(x,y,z) {
-    this.x = x
-    this.y = y
-    this.z = z
+    this.x = x || 0
+    this.y = y || 0
+    this.z = z || 0
+  }
+  equals(v1) {
+    return v1 instanceof V3
+        && v1.x === this.x
+        && v1.y === this.y
+        && v1.z === this.z
   }
   add(v1){
     return new V3(
@@ -133,5 +139,11 @@ export default class V3 {
         Math.cos(6.283 * n),
         0
     );
+  }
+  static angToVec(ang) {
+    return new V3(
+        Math.sin(ang),
+        Math.cos(ang)
+    )
   }
 }

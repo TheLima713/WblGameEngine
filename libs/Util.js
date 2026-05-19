@@ -9,6 +9,9 @@ export default class Util {
     rndRange(min,max) {
         return min + (max-min)*Math.random()
     }
+    static rndAng() {
+        return 6.283 * Math.random()
+    }
     mapVal(v,vMin,vMax,oMin,oMax) {
         if(vMin===vMax) return oMin+0.5*(oMax-oMin)//can't map v
         let normalized = (v-vMin)/vMax

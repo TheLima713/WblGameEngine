@@ -17,8 +17,8 @@ export default class InputManager {
     /**
      * @param {Node} source 
      */
-    constructor(source, onInputCallback = ()=>{}) {
-        this.source = source;
+    constructor(sourceId, onInputCallback = ()=>{}) {
+        this.source = document.getElementById(sourceId);
         this.onInputCallback = onInputCallback;
 
         this.source.addEventListener('contextmenu',(event)=>{event.preventDefault()});

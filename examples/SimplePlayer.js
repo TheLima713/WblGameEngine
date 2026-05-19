@@ -1,8 +1,9 @@
-import Renderer from "../libs/Renderer.js";
-import StateMachine, { State } from "../libs/StateMachine.js";
 import V3 from "../libs/V3.js";
 import Color from "../libs/Color.js";
+import StateMachine, { State } from "../libs/StateMachine.js";
+import Renderer from "../libs/Renderer.js";
 import InputManager from "../libs/InputManager.js";
+import EntityManager from "../libs/EntityManager.js";
 
 /**
  * @param {Renderer} renderer 
@@ -15,13 +16,19 @@ export default class Player {
     position = new V3(120,120);
     direction = new V3(0,1);
     inputLocked = true;
-    currState;
+    /**@type {StateMachine} */
     stateMachine;
+
+    //These are filled by the EntityManager:
+    /**@type {Renderer} */
+    renderer;
+    /**@type {InputManager} */
+    inputManager;
+    /**@type {EntityManager} */
+    entityManager;
     constructor(renderer, inputManager) {
         let params = {
-            player: this,
-            renderer: renderer,
-            inputManager: inputManager
+            player: this
         };
         let spawning = new State({
             name: 'spawning',
@@ -47,7 +54,7 @@ export default class Player {
                 let player = this.params.player;
                 let spawningColor = Color.fromVec(player.color.toVec(),0.5);
 
-                this.params.renderer.fillCircle(player.position,player.radius * normTime,spawningColor);
+                player.renderer.fillCircle(player.position,player.radius * normTime,spawningColor);
             },
             exit(exitParams) {
                 return this.params;
@@ -65,12 +72,12 @@ export default class Player {
                 this.params.currTime++;
                 this.params.debounceTimer++;
 
-                /** @type {InputManager} */
-                let IM = this.params.inputManager;
                 /** @type {Player} */
                 let player = this.params.player;
+                /** @type {InputManager} */
+                let IM = player.inputManager;
                 
-                player.handleInput(IM);
+                player.handleInput();
 
                 if(IM.keyboard['f']) {
                     player.inputLocked = true;
@@ -79,10 +86,6 @@ export default class Player {
 
                 return this.name;
             },
-            /**
-             * @param {Renderer} renderer 
-             * @param {*} drawParams 
-             */
             draw(drawParams){
                 let normTime = this.params.currTime/this.params.maxTime;
                 let waveRadius = (1+0.25 * Math.sin(normTime * 15))
@@ -90,7 +93,7 @@ export default class Player {
                 /** @type {Player} */
                 let player = this.params.player;
 
-                this.params.renderer.fillCircle(player.position,player.radius * waveRadius,player.color);
+                player.renderer.fillCircle(player.position,player.radius * waveRadius,player.color);
             },
             exit(exitParams) {
                 return this.params;
@@ -104,8 +107,6 @@ export default class Player {
                 this.params.maxTime = 300;
             },
             exec(execParams){
-                /** @type {InputManager} */
-                let IM = this.params.inputManager;
                 /** @type {Player} */
                 let player = this.params.player;
                 
@@ -115,10 +116,6 @@ export default class Player {
                 player.inputLocked = false;
                 return 'idle';
             },
-            /**
-             * @param {Renderer} renderer 
-             * @param {*} drawParams 
-             */
             draw(drawParams){
                 let normTime = this.params.currTime/this.params.maxTime;
 
@@ -137,7 +134,7 @@ export default class Player {
                 let shiverOffset = new V3(Math.sin(shiverSpeed * 200),0)
                     .scale(3);
 
-                this.params.renderer.fillCircle(player.position.add(shiverOffset),player.radius,freezingColor);
+                player.renderer.fillCircle(player.position.add(shiverOffset),player.radius,freezingColor);
             },
             exit(exitParams) {
                 return this.params;
@@ -157,10 +154,6 @@ export default class Player {
 
                 return '';
             },
-            /**
-             * @param {Renderer} renderer 
-             * @param {*} drawParams 
-             */
             draw(drawParams){
                 let normTime = this.params.currTime/this.params.maxTime;
                 let waveRadius = (1+Math.sin(normTime * 5))
@@ -169,25 +162,20 @@ export default class Player {
                 let player = this.params.player;
                 let dyingColor = Color.fromVec(player.color.toVec(),0.5);
 
-                this.params.renderer.fillCircle(player.position,player.radius * waveRadius,dyingColor);
+                player.renderer.fillCircle(player.position,player.radius * waveRadius,dyingColor);
             },
             exit(exitParams) {
                 return this.params;
             }
         });
         this.stateMachine = new StateMachine([spawning,idle,frozen,dying]);
-        this.currState = spawning;
         return this;
     }
-    /**
-     * 
-     * @param {InputManager} inputManager 
-     */
-    handleInput(inputManager) {
-        let kb = inputManager.keyboard;
+    handleInput() {
+        let kb = this.inputManager.keyboard;
         let targetDirection = new V3(0,0);
         ['w','a','s','d'].forEach(key=>{
-            if(inputManager.keyboard[key]) targetDirection = targetDirection.add(this.mapInputToDir(key));
+            if(this.inputManager.keyboard[key]) targetDirection = targetDirection.add(this.mapInputToDir(key));
         })
         targetDirection = targetDirection.normalized();
 
@@ -206,5 +194,8 @@ export default class Player {
     move() {
         //console.log(this.direction,this.position.add(this.direction.scale(5)))
         this.position = this.position.add(this.direction.scale(5));
+    }
+    setPosition(position) {
+        this.position = position;
     }
 }

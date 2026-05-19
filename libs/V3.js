@@ -142,8 +142,8 @@ export default class V3 {
   }
   static angToVec(ang) {
     return new V3(
-        Math.sin(ang),
-        Math.cos(ang)
+        Math.cos(ang),
+        -Math.sin(ang)
     )
   }
   toAng() {

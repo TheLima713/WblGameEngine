@@ -91,17 +91,22 @@ export default class Turret {
                 /**@type {Turret} */
                 let turret = this.params.turret;
 
-                console.log(this.name);
                 let foundPlayer = turret.searchForPlayer();
                 if(!foundPlayer) return 'moving';
                 
                 let direction = foundPlayer.position.sub(turret.position);
                 turret.targetDirectionAngle = direction.normalized().toAng();
 
-                let newAngle = Util.lerp(turret.directionAngle, turret.targetDirectionAngle, 0.1);
-                
-                turret.directionAngle = newAngle;
+                //TODO: FIX: When swapping angles from -PI to +PI, the lerp takes the long path
+                let newAngle = Util.lerpAngle(turret.directionAngle, turret.targetDirectionAngle, 0.1);
 
+                console.log(
+                    turret.targetDirectionAngle,
+                    turret.directionAngle,
+                    newAngle
+                );
+                                
+                turret.directionAngle = newAngle;
 
                 return this.name;
             },
@@ -156,7 +161,6 @@ export default class Turret {
         let turret = this;
 
         let turretDirection = V3.angToVec(turret.directionAngle);
-
         //Area
         this.renderer.fillCircle(this.position,this.searchRadius,new Color(0.2,0.2,0.2,0.2));
 

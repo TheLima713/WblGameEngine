@@ -23,4 +23,23 @@ export default class Util {
     static lerp(n1,n2,t) {
         return n1 * (1-t) + n2 * t
     }
+    static lerpAngle(a1,a2,t) {
+        
+        let full = 2 * Math.PI;
+        a1 = this.normAngle(a1);
+        a2 = this.normAngle(a2);
+
+        let diffClockwise = (a2-a1 + 2 * Math.PI) % (2 * Math.PI);
+        let diffCounter = diffClockwise - 2 * Math.PI;
+
+        let finalDiff = Math.abs(diffClockwise) <= Math.abs(diffCounter)
+            ? diffClockwise
+            : diffCounter
+        ;
+        return a1 + finalDiff*t;
+    }
+    static normAngle(angle) {
+        let full = 2 * Math.PI;
+        return ((angle%full)+full)%full;
+    }
 }

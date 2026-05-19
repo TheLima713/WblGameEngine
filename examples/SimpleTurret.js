@@ -4,6 +4,8 @@ import V3 from "../libs/V3.js";
 import Color from "../libs/Color.js";
 import InputManager from "../libs/InputManager.js";
 import Util from "../libs/Util.js";
+import EntityManager from "../libs/EntityManager.js";
+import Player from "./SimplePlayer.js";
 
 /**
  * @param {Renderer} renderer 
@@ -18,6 +20,7 @@ export default class Turret {
     position = new V3(120,120);
     directionAngle = Util.rndAng();
     targetDirectionAngle = Util.rndAng();
+    searchRadius = 100;
     /**@type {StateMachine} */
     stateMachine;
     //These are filled by the EntityManager:
@@ -48,6 +51,9 @@ export default class Turret {
                 /**@type {Turret} */
                 let turret = this.params.turret;
 
+                let foundPlayer = turret.searchForPlayer();
+                if(foundPlayer) return 'targetting';
+
                 let newAngle = Util.lerp(turret.directionAngle, turret.targetDirectionAngle, 0.1);
                 
                 if(Math.abs(turret.directionAngle - newAngle) < 0.05) return 'idle';
@@ -68,6 +74,47 @@ export default class Turret {
                 return this.params;
             }
         });
+        
+        let targetting = new State({
+            name: 'targetting',
+            params: params,
+            init(initParams) {
+                if(initParams) this.params = {
+                    ...initParams,
+                    ...this.params
+                };
+                this.params.currTime = 0;
+            },
+            exec(execParams){
+                this.params.currTime++;
+
+                /**@type {Turret} */
+                let turret = this.params.turret;
+
+                console.log(this.name);
+                let foundPlayer = turret.searchForPlayer();
+                if(!foundPlayer) return 'moving';
+                
+                let direction = foundPlayer.position.sub(turret.position);
+                turret.targetDirectionAngle = direction.normalized().toAng();
+
+                let newAngle = Util.lerp(turret.directionAngle, turret.targetDirectionAngle, 0.1);
+                
+                turret.directionAngle = newAngle;
+
+
+                return this.name;
+            },
+            draw(drawParams){
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                turret.drawTurret();
+            },
+            exit(exitParams) {
+                return this.params;
+            }
+        });
+        
         let idle = new State({
             name: 'idle',
             init(initParams) {
@@ -98,7 +145,7 @@ export default class Turret {
             }
         });
 
-        this.stateMachine = new StateMachine([moving,idle]);
+        this.stateMachine = new StateMachine([moving,targetting,idle]);
         return this;
     }
     setPosition(position) {
@@ -107,19 +154,32 @@ export default class Turret {
     drawTurret() {
         /** @type {Turret} */
         let turret = this;
-        let tipColor = Color.fromVec(this.color.toVec().scale(1.1));
 
         let turretDirection = V3.angToVec(turret.directionAngle);
 
+        //Area
+        this.renderer.fillCircle(this.position,this.searchRadius,new Color(0.2,0.2,0.2,0.2));
+
+        //Body
         this.renderer.fillCircle(this.position,this.bodySize,this.color);
 
+        let tipColor = Color.fromVec(this.color.toVec().scale(1.1));
         let tipStart = turret.position.add(turretDirection.scale(turret.bodySize/2));
         let tipEnd = tipStart.add(turretDirection.scale(turret.tipHeight));
         
+        //Tip
         this.renderer.fillLine(tipStart,tipEnd, tipColor, turret.tipWidth);
+    }
+    searchForPlayer() {
+        let players = this.entityManager.getEntities(Player);
+        if(players.length<1) return null;
+
+        /**@type {Player} */
+        let player = players[0];
+
+        let direction = player.position.sub(this.position);
+        if(direction.mag() > this.searchRadius) return null;
         
-        //let tipStart2 = turret.position.add(turret.targetDirection.scale(turret.bodySize/2));
-        //let tipEnd2 = tipStart.add(turret.targetDirection.scale(turret.tipHeight * 2));
-        //renderer.fillLine(tipStart2,tipEnd2, Color.white, turret.tipWidth / 2);
+        return player;
     }
 }

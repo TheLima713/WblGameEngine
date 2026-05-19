@@ -146,4 +146,7 @@ export default class V3 {
         Math.cos(ang)
     )
   }
+  toAng() {
+    return Math.atan2(-this.y, this.x)
+  }
 }

@@ -10,13 +10,14 @@ export default class EntityManager {
     addEntity(entity) {
         entity.renderer = this.renderer;
         entity.inputManager = this.inputManager;
+        entity.entityManager = this;
         this.entities.push(entity);
     }
-    getEntity(type,name) {
-        let entity = this.entities.find((entity)=>{
-            return entity instanceof type && entity.name === name
+    getEntities(type) {
+        let entities = this.entities.filter((entity)=>{
+            return entity instanceof type
         })
-        return entity;
+        return entities;
     }
     init() {
         this.entities.forEach((entity)=>{

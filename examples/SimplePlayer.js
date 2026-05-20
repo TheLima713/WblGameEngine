@@ -4,6 +4,7 @@ import StateMachine, { State } from "../libs/StateMachine.js";
 import Renderer from "../libs/Renderer.js";
 import InputManager from "../libs/InputManager.js";
 import EntityManager from "../libs/EntityManager.js";
+import Counter from "../libs/Counter.js";
 
 /**
  * @param {Renderer} renderer 
@@ -13,9 +14,15 @@ import EntityManager from "../libs/EntityManager.js";
 export default class Player {
     color = Color.red;
     radius = 15;
+    
     position = new V3(120,120);
     direction = new V3(0,1);
+    
     inputLocked = true;
+    
+    spawnTimer = new Counter(50);
+    frozenTimer = new Counter(150);
+
     /**@type {StateMachine} */
     stateMachine;
 
@@ -26,7 +33,7 @@ export default class Player {
     inputManager;
     /**@type {EntityManager} */
     entityManager;
-    constructor(renderer, inputManager) {
+    constructor() {
         let params = {
             player: this
         };
@@ -38,20 +45,22 @@ export default class Player {
                     ...initParams,
                     ...this.params
                 };
-                this.params.currTime = 0;
-                this.params.maxTime = 100;
-                this.params.radius = 15;
+                /** @type {Player} */
+                let player = this.params.player;
+                player.spawnTimer.reset();
             },
             exec(execParams){
-                this.params.currTime++;
-                if(this.params.currTime<=this.params.maxTime) return this.name;
+                /** @type {Player} */
+                let player = this.params.player;
+                player.spawnTimer.count();
+                if(!player.spawnTimer.over()) return this.name;
                 return 'idle';
             },
             draw(drawParams){
-                let normTime = this.params.currTime / this.params.maxTime;
-                
                 /** @type {Player} */
                 let player = this.params.player;
+
+                let normTime = player.spawnTimer.progress()
                 let spawningColor = Color.fromVec(player.color.toVec(),0.5);
 
                 player.renderer.fillCircle(player.position,player.radius * normTime,spawningColor);
@@ -76,13 +85,13 @@ export default class Player {
                 let player = this.params.player;
                 /** @type {InputManager} */
                 let IM = player.inputManager;
-                
-                player.handleInput();
-
-                if(IM.keyboard['f']) {
-                    player.inputLocked = true;
-                    return 'frozen';
+                        
+                if(IM.keyboard['r']) {
+                    player.position = new V3(120,120);
+                    return 'spawning';
                 }
+
+                player.handleInput();
 
                 return this.name;
             },
@@ -103,36 +112,37 @@ export default class Player {
             name: 'frozen',
             init(initParams) {
                 this.params = initParams;
-                this.params.currTime = 0;
-                this.params.maxTime = 300;
+                
+                /** @type {Player} */
+                let player = this.params.player;
+                player.frozenTimer.reset();
             },
             exec(execParams){
                 /** @type {Player} */
                 let player = this.params.player;
                 
-                this.params.currTime++;
-                if(this.params.currTime <= this.params.maxTime) return this.name;
+                player.frozenTimer.count();
+                if(!player.frozenTimer.over()) return this.name;
 
                 player.inputLocked = false;
                 return 'idle';
             },
             draw(drawParams){
-                let normTime = this.params.currTime/this.params.maxTime;
-
                 /** @type {Player} */
                 let player = this.params.player;
+                let normTime = player.frozenTimer.progress();
+
+                let shiverSpeed = (1-normTime)**2;
+                let shiverOffset = new V3(Math.sin(shiverSpeed * 200),0)
+                    .scale(3);
 
                 let freezingColor = Color.fromVec(
                     new V3(0,1,1)
                     .lerp(
                         player.color.toVec(),
-                        normTime
+                        1-shiverSpeed
                     )
                 );
-
-                let shiverSpeed = (1-normTime)**2;
-                let shiverOffset = new V3(Math.sin(shiverSpeed * 200),0)
-                    .scale(3);
 
                 player.renderer.fillCircle(player.position.add(shiverOffset),player.radius,freezingColor);
             },
@@ -169,10 +179,11 @@ export default class Player {
             }
         });
         this.stateMachine = new StateMachine([spawning,idle,frozen,dying]);
-        return this;
     }
     handleInput() {
         let kb = this.inputManager.keyboard;
+
+        //Moving
         let targetDirection = new V3(0,0);
         ['w','a','s','d'].forEach(key=>{
             if(this.inputManager.keyboard[key]) targetDirection = targetDirection.add(this.mapInputToDir(key));
@@ -197,5 +208,8 @@ export default class Player {
     }
     setPosition(position) {
         this.position = position;
+    }
+    freeze() {
+        this.stateMachine.swap('frozen');
     }
 }

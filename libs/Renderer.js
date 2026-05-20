@@ -1,7 +1,6 @@
 import Color from "./Color.js";
 import V3 from "./V3.js";
 
-
 export default class Renderer {
     /** @type {HTMLCanvasElement} */
     canvas;
@@ -30,6 +29,17 @@ export default class Renderer {
     }
     /**
      * 
+     * @param {V3} point 
+     * @param {Color} color 
+     */
+    drawCircle(point,radius = 1, color = Color.white) {
+        this.context.beginPath();
+        this.context.arc(point.x, point.y, radius, 0, 2 * Math.PI); 
+        this.context.strokeStyle = color.toHex();
+        this.context.stroke();
+    }
+    /**
+     * 
      * @param {V3} point1 
      * @param {V3} point2 
      * @param {Color} color 
@@ -51,7 +61,6 @@ export default class Renderer {
      */
     fillTriangle(point1,point2,point3,color = Color.white) {
         this.context.fillStyle = color.toHex();
-        this.context.strokeStyle = color.toHex();
         this.context.beginPath();
         
         this.context.moveTo(point1.x,point1.y);
@@ -60,6 +69,24 @@ export default class Renderer {
         this.context.lineTo(point1.x,point1.y);
         
         this.context.fill();
+    }
+    /**
+     * 
+     * @param {V3} point1 
+     * @param {V3} point2 
+     * @param {V3} point3 
+     * @param {Color} color 
+     */
+    drawTriangle(point1,point2,point3,color = Color.white) {
+        this.context.strokeStyle = color.toHex();
+        this.context.beginPath();
+        
+        this.context.moveTo(point1.x,point1.y);
+        this.context.lineTo(point2.x,point2.y);
+        this.context.lineTo(point3.x,point3.y);
+        this.context.lineTo(point1.x,point1.y);
+        
+        this.context.stroke();
     }
     fillLine(point1,point2,color = Color.white, width = 1) {
         this.context.lineWidth = width;

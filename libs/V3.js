@@ -141,10 +141,15 @@ export default class V3 {
     );
   }
   static angToVec(ang) {
-    return new V3(
-        Math.sin(ang),
-        Math.cos(ang)
-    )
+    let vec = new V3(
+        Math.cos(ang),
+        Math.sin(ang)
+    );
+    let out = new V3(
+        vec.x,
+        -vec.y
+    );
+    return out;
   }
   toAng() {
     return Math.atan2(-this.y, this.x)

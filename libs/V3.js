@@ -5,7 +5,8 @@ export default class V3 {
   x = 0;
   y = 0;
   z = 0;
-  static ZERO = new V3(0, 0, 0);
+  static one = new V3(1,1,1);
+  static zero = new V3(0, 0, 0);
   static UP = new V3(0, 1, 0);
   static DOWN = new V3(0, -1, 0);
   static LEFT = new V3(-1, 0, 0);

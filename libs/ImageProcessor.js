@@ -135,4 +135,30 @@ export default class ImageProcessor {
         });
         return out;
     }
+    bloom(frame) {
+        let out = this.copy()
+        this.gridLoop((/** @type {V3} */pos)=>{
+            if(this.getPixel(pos).toVec().mag() < 0.1) {
+                out.setPixel(pos,this.getPixel(pos));
+                return;
+            }
+
+            let colorSpreadVec = this.getPixel(pos).toVec().scale(0.5);
+            //path 1: spread its color | path 2: receive neighboring colors (averaging)
+            this.gridLoop(
+                (/** @type {V3} */pos)=>{
+                    //add spread to out
+                },
+                this.pos.add(V3.one),
+                this.pos.sub(V3.one)
+            );
+            let waveSpeed = 0.1;
+            let wavePhase = waveSpeed * (frame + pos.y);
+            let offset = 10 * Math.cos(wavePhase);
+            
+            let newPos = pos.add(V3.RIGHT.scale(offset)).floor();
+            out.setPixel(pos,this.getPixel(newPos));
+        });
+        return out;
+    }
 }

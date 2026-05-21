@@ -15,8 +15,8 @@ import Bullet from "./SimpleBullet.js";
  * @returns 
  */
 export default class Turret {
-    color = new Color(0.1,0.5,0.9);
-    bodySize = 20;
+    color = new Color(0.1,0.4,0.7);
+    radius = 20;
     tipWidth = 15;
     tipHeight = 20;
 
@@ -26,6 +26,7 @@ export default class Turret {
 
     idleTimer = new Counter(100);
     shootTimer = new Counter(300);
+    deactivateTimer = new Counter(100);
     
     bulletType = Bullet;
 
@@ -76,8 +77,6 @@ export default class Turret {
                 return 'idle';
             },
             draw(drawParams){
-                let normTime = this.params.currTime / this.params.maxTime;
-                
                 /** @type {Turret} */
                 let turret = this.params.turret;
                 turret.drawTurret();
@@ -155,8 +154,6 @@ export default class Turret {
                 return 'moving';
             },
             draw(drawParams){
-                let normTime = this.params.currTime / this.params.maxTime;
-                
                 /** @type {Turret} */
                 let turret = this.params.turret;
                 turret.drawTurret();
@@ -165,29 +162,58 @@ export default class Turret {
                 return this.params;
             }
         });
+        
+        let deactivated = new State({
+            name: 'deactivated',
+            init(initParams) {
+                this.params = initParams;
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                turret.deactivateTimer.reset();
+            },
+            exec(execParams){
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                turret.deactivateTimer.count();
 
-        this.stateMachine = new StateMachine([moving,targetting,idle]);
+                if(!turret.deactivateTimer.over()) return this.name;
+                
+                turret.targetDirection = V3.normToTrig(Math.random());
+                return 'moving';
+            },
+            draw(drawParams){
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                let deactivatedColor = Color.fromVec(turret.color.toVec().scale(0.5));
+                turret.drawTurret(this.radius,deactivatedColor);
+            },
+            exit(exitParams) {
+                return this.params;
+            }
+        });
+
+        this.stateMachine = new StateMachine([moving,targetting,deactivated,idle]);
     }
     setPosition(position) {
         this.position = position;
     }
-    drawTurret() {
+    drawTurret(size = this.radius, color = this.color, offset = new V3(0,0)) {
+        let drawPosition = this.position.add(offset);
         //Area
-        this.renderer.fillCircle(this.position,this.searchRadius,new Color(0.3,0.3,0.3,0.3));
+        this.renderer.fillCircle(drawPosition,this.searchRadius,new Color(0.3,0.3,0.3,0.3));
 
         //Body
-        this.renderer.fillCircle(this.position,this.bodySize,this.color);
+        this.renderer.fillCircle(drawPosition,size,color);
 
         //Tip
-        let tipColor = Color.fromVec(this.color.toVec().scale(1.1));
-        let tipStart = this.position.add(this.direction.scale(this.bodySize/2));
+        let tipColor = Color.fromVec(color.toVec().scale(1.2));
+        let tipStart = drawPosition.add(this.direction.scale(size/2));
 
         let tipEnd = tipStart.add(this.direction.scale(this.tipHeight));
 
         let shouldRecoil = this.stateMachine.currState.name === 'targetting';
         let tipRecoil = 0.25 - Math.min(this.shootTimer.progress(),0.25);
         if(shouldRecoil) tipEnd = tipEnd.sub(this.direction.scale(tipRecoil * this.tipHeight));
-        
         
         this.renderer.fillLine(tipStart,tipEnd, tipColor, this.tipWidth);
     }
@@ -215,11 +241,15 @@ export default class Turret {
         if(newBullet.setTarget) newBullet.setTarget(player);
         
         newBullet.owner = this;
+        newBullet.setTargetType(Player);
         newBullet.stateMachine.init();
 
         this.entityManager.addEntity(newBullet);
     }
     setBulletType(type) {
         this.bulletType = type;
+    }
+    hit() {
+        this.stateMachine.swap('deactivated')
     }
 }

@@ -19,6 +19,9 @@ export default class Bullet {
     lifeTimer = new Counter(75);
     dyingTimer = new Counter(25);
 
+    trailPositions = [];
+    trailLengthMax = 15;
+
     /**@type {StateMachine} */
     stateMachine;
     //These are filled by the EntityManager:
@@ -49,6 +52,8 @@ export default class Bullet {
                 let bullet = this.params.bullet;
                 bullet.lifeTimer.count();
 
+                bullet.trailPositions.push(bullet.position);
+                if(bullet.trailPositions.length>bullet.trailLengthMax) bullet.trailPositions.shift();
                 //Move
                 bullet.move();
                 
@@ -64,6 +69,18 @@ export default class Bullet {
             draw(drawParams){
                 /** @type {Bullet} */
                 let bullet = this.params.bullet;
+
+                //Trail
+                let trailColor = Color.fromVec(bullet.color.toVec().scale(0.5));
+                let prevTrailPos = bullet.trailPositions[0]
+                for(let i=0;i<bullet.trailPositions.length-1;i++) {
+                    let nextTrailPos = bullet.trailPositions[i+1];
+                    let trailWidth = bullet.radius * i / bullet.trailPositions.length;
+                    bullet.renderer.fillLine(prevTrailPos,nextTrailPos,trailColor,trailWidth);
+                    prevTrailPos = nextTrailPos;
+                }
+
+                //Bullet
                 bullet.renderer.fillCircle(bullet.position, bullet.radius,bullet.color);
             }
         });
@@ -94,9 +111,10 @@ export default class Bullet {
                 bullet.renderer.fillCircle(bullet.position, bullet.radius * waveRadius,bullet.color);
 
                 let shardCount = 6;
+                let spreadDistance = 20;
                 for(let i=0;i<shardCount;i++) {
                     let shardDirection = V3.normToTrig(i/shardCount);
-                    let shardOffset = 15 * bullet.dyingTimer.progress();
+                    let shardOffset = spreadDistance * bullet.dyingTimer.progress();
                     let shardPosition = bullet.position.add(shardDirection.scale(shardOffset))
                     bullet.renderer.fillCircle(shardPosition,5 * waveRadius,bullet.color);
                 }
@@ -112,12 +130,15 @@ export default class Bullet {
             let sizeSum = target.radius + this.radius;
             if(diff.mag() >= sizeSum) return;
             
-            target.freeze();
+            target.hit();
             targetsHit.push(target);
         })
         return targetsHit;
     }
     move() {
         this.position = this.position.add(this.direction.scale(this.velocity));
+    }
+    setTargetType(type) {
+        this.targetType = type;
     }
 }

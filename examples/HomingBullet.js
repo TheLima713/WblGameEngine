@@ -1,6 +1,6 @@
+import V3 from "../libs/V3.js";
 import Color from "../libs/Color.js";
 import Counter from "../libs/Counter.js";
-import V3 from "../libs/V3.js";
 import Bullet from "./SimpleBullet.js";
 
 export default class HomingBullet extends Bullet{

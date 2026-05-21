@@ -1,3 +1,4 @@
+import Color from './Color.js';
 import Util from './Util.js'
 
 export default class V3 {
@@ -153,5 +154,29 @@ export default class V3 {
   }
   toAng() {
     return Math.atan2(-this.y, this.x)
+  }
+  floor() {
+    return new V3(
+        Math.floor(this.x),
+        Math.floor(this.y),
+        Math.floor(this.z)
+    )
+  }
+  ceil() {
+    return new V3(
+        Math.ceil(this.x),
+        Math.ceil(this.y),
+        Math.ceil(this.z)
+    )
+  }
+  toColor() {
+    return new Color(this.x,this.y,this.z,1);
+  }
+  clamp(v2,v1 = new V3(0,0,0)) {
+    return new V3(
+        Util.clamp(this.x,v1.x,v2.x),
+        Util.clamp(this.y,v1.y,v2.y),
+        Util.clamp(this.z,v1.z,v2.z)
+    );
   }
 }

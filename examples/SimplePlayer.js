@@ -5,6 +5,8 @@ import Renderer from "../libs/Renderer.js";
 import InputManager from "../libs/InputManager.js";
 import EntityManager from "../libs/EntityManager.js";
 import Counter from "../libs/Counter.js";
+import Bullet from "./SimpleBullet.js";
+import Turret from "./SimpleTurret.js";
 
 /**
  * @param {Renderer} renderer 
@@ -15,13 +17,17 @@ export default class Player {
     color = Color.red;
     radius = 15;
     
-    position = new V3(120,120);
+    spawnPoint = new V3(120,120);
+    position = this.spawnPoint;
     direction = new V3(0,1);
     
     inputLocked = true;
     
+    waveTimer = new Counter(500);
     spawnTimer = new Counter(50);
     frozenTimer = new Counter(150);
+    shootTimer = new Counter(150);
+    dyingTimer = new Counter(50);
 
     /**@type {StateMachine} */
     stateMachine;
@@ -61,51 +67,53 @@ export default class Player {
                 let player = this.params.player;
 
                 let normTime = player.spawnTimer.progress()
-                let spawningColor = Color.fromVec(player.color.toVec(),0.5);
+                let spawningColor = Color.fromVec(player.color.toVec().scale(0.5));
 
-                player.renderer.fillCircle(player.position,player.radius * normTime,spawningColor);
-            },
-            exit(exitParams) {
-                return this.params;
+                player.draw(player.radius * normTime,spawningColor);
             }
         });
         let idle = new State({
             name: 'idle',
             init(initParams) {
                 this.params = initParams;
-                this.params.currTime = 0;
-                this.params.maxTime = 500;
-                this.params.debounceTimer = 0;
-            },
-            exec(execParams){
-                this.params.currTime++;
-                this.params.debounceTimer++;
 
                 /** @type {Player} */
                 let player = this.params.player;
+                player.shootTimer.reset();
+                player.waveTimer.reset();
+            },
+            exec(execParams){
+                /** @type {Player} */
+                let player = this.params.player;
+                
+                player.shootTimer.count();
+                player.waveTimer.count();
+
                 /** @type {InputManager} */
                 let IM = player.inputManager;
                         
                 if(IM.keyboard['r']) {
-                    player.position = new V3(120,120);
+                    player.position = this.spawnPoint;
                     return 'spawning';
                 }
 
-                player.handleInput();
+                player.handleMovement();
+
+                if(IM.mouse.leftClick && player.shootTimer.over()) {
+                    player.shootBullet();
+                    player.shootTimer.reset();
+                }
 
                 return this.name;
             },
             draw(drawParams){
-                let normTime = this.params.currTime/this.params.maxTime;
-                let waveRadius = (1+0.25 * Math.sin(normTime * 15))
-                
                 /** @type {Player} */
                 let player = this.params.player;
 
-                player.renderer.fillCircle(player.position,player.radius * waveRadius,player.color);
-            },
-            exit(exitParams) {
-                return this.params;
+                let normTime = player.waveTimer.progress();
+                let waveRadius = (1+0.25 * Math.sin(normTime * 15))
+                
+                player.draw(player.radius * waveRadius,player.color);
             }
         });
         let frozen = new State({
@@ -144,35 +152,34 @@ export default class Player {
                     )
                 );
 
-                player.renderer.fillCircle(player.position.add(shiverOffset),player.radius,freezingColor);
-            },
-            exit(exitParams) {
-                return this.params;
+                player.draw(player.radius,freezingColor,shiverOffset);
             }
         });
         let dying = new State({
             name: 'dying',
             init(initParams) {
                 this.params = initParams;
-                this.params.currTime = 0;
-                this.params.debounceTimer = 0;
-                this.params.maxTime = 50;
+                /** @type {Player} */
+                let player = this.params.player;
+                player.dyingTimer.reset();
             },
             exec(execParams){
-                this.params.currTime++;
-                if(this.params.currTime<=this.params.maxTime) return this.name;
-
+                /** @type {Player} */
+                let player = this.params.player;
+                player.dyingTimer.count();
+                if(!player.dyingTimer.over()) return this.name;
+                
                 return '';
             },
             draw(drawParams){
-                let normTime = this.params.currTime/this.params.maxTime;
-                let waveRadius = (1+Math.sin(normTime * 5))
-
                 /** @type {Player} */
                 let player = this.params.player;
+                let normTime = player.dyingTimer.progress();
+                let waveRadius = (1+Math.sin(normTime * 5))
+
                 let dyingColor = Color.fromVec(player.color.toVec(),0.5);
 
-                player.renderer.fillCircle(player.position,player.radius * waveRadius,dyingColor);
+                player.draw(player.radius * waveRadius,dyingColor);
             },
             exit(exitParams) {
                 return this.params;
@@ -180,18 +187,20 @@ export default class Player {
         });
         this.stateMachine = new StateMachine([spawning,idle,frozen,dying]);
     }
-    handleInput() {
-        let kb = this.inputManager.keyboard;
+    handleMovement() {
+        //Aiming
+        let mousePosition = this.inputManager.mouse.position;
+        let screenPosition = this.renderer.getScreenPosition(this.position);
+        let newDirection = mousePosition.sub(screenPosition).normalized();
+        this.direction = newDirection;
 
         //Moving
-        let targetDirection = new V3(0,0);
+        let moveDirection = new V3(0,0);
         ['w','a','s','d'].forEach(key=>{
-            if(this.inputManager.keyboard[key]) targetDirection = targetDirection.add(this.mapInputToDir(key));
+            if(this.inputManager.keyboard[key]) moveDirection = moveDirection.add(this.mapInputToDir(key));
         })
-        targetDirection = targetDirection.normalized();
-
-        if(this.direction.equals(targetDirection)) this.move();
-        else this.direction = targetDirection;
+        moveDirection = moveDirection.normalized();
+        this.position = this.position.add(moveDirection.scale(5));
     }
     mapInputToDir(input) {
         switch(input) {
@@ -202,14 +211,29 @@ export default class Player {
         }
         return new V3(0,0);
     }
-    move() {
-        //console.log(this.direction,this.position.add(this.direction.scale(5)))
-        this.position = this.position.add(this.direction.scale(5));
-    }
     setPosition(position) {
         this.position = position;
     }
-    freeze() {
+    hit() {
         this.stateMachine.swap('frozen');
+    }
+    draw(size = this.radius, color = this.color, offset = new V3(0,0)) {
+        //Tip
+        let tipPosition = this.position.add(this.direction.scale(size));
+        let tipRadius = size * 0.5;
+        let tipColor = Color.fromVec(color.toVec().scale(0.8));
+        this.renderer.fillCircle(tipPosition.add(offset),tipRadius,tipColor);
+
+        //Body
+        this.renderer.fillCircle(this.position.add(offset),size,color);
+    }
+    shootBullet() {
+        let newBullet = new Bullet(this.position, this.direction);
+        
+        newBullet.owner = this;
+        newBullet.setTargetType(Turret);
+        newBullet.stateMachine.init();
+
+        this.entityManager.addEntity(newBullet);
     }
 }

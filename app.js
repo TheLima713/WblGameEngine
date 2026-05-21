@@ -2,14 +2,6 @@
 resources i need to gamedev:
 libs/manager objs:
 - &audio
-- &draw
-- &color
-- &vector math
-- input listener
-- input mapping
- - reference to focus object
-- >state machine
-- >animation
 - >Scene
 */
 
@@ -21,12 +13,15 @@ import Player from "./examples/SimplePlayer.js";
 import Turret from "./examples/SimpleTurret.js";
 import Counter from "./libs/Counter.js";
 import HomingBullet from "./examples/HomingBullet.js";
+import GLRenderer from "./libs/GLRenderer.js";
+import Color from "./libs/Color.js";
 
 console.log('Hello, world!');
 
-let renderer = new Renderer('canvas',960,540);
+let renderer = new Renderer('canvas',new V3(960,540));
 let inputManager = new InputManager('canvas');
 let entityManager = new EntityManager(renderer,inputManager);
+let frameCounter = new Counter(0);
 
 let player = new Player();
 
@@ -43,5 +38,8 @@ entityManager.addEntity(turret2);
 
 entityManager.init();
 setInterval(()=>{
+    frameCounter.count();
+
     entityManager.run();
+    entityManager.renderer.postProcess(frameCounter.currValue);
 },1000/60);

@@ -6,6 +6,8 @@ import InputManager from "../libs/InputManager.js";
 import Util from "../libs/Util.js";
 import EntityManager from "../libs/EntityManager.js";
 import Player from "./SimplePlayer.js";
+import Counter from "../libs/Counter.js";
+import Bullet from "./SimpleBullet.js";
 
 /**
  * @param {Renderer} renderer 
@@ -13,14 +15,22 @@ import Player from "./SimplePlayer.js";
  * @returns 
  */
 export default class Turret {
-    color = Color.gray;
-    bodySize = 20;
+    color = new Color(0.1,0.4,0.7);
+    radius = 20;
     tipWidth = 15;
     tipHeight = 20;
+
     position = new V3(120,120);
-    directionAngle = Util.rndAng();
-    targetDirectionAngle = Util.rndAng();
-    searchRadius = 100;
+    direction = V3.normToTrig(Math.random());
+    targetDirection = V3.normToTrig(Math.random());
+
+    idleTimer = new Counter(100);
+    shootTimer = new Counter(300);
+    deactivateTimer = new Counter(100);
+    
+    bulletType = Bullet;
+
+    searchRadius = 200;
     /**@type {StateMachine} */
     stateMachine;
     //These are filled by the EntityManager:
@@ -30,7 +40,7 @@ export default class Turret {
     inputManager;
     /**@type {EntityManager} */
     entityManager;
-    constructor(renderer, inputManager) {
+    constructor() {
         let params = {
             turret: this
         };
@@ -42,30 +52,31 @@ export default class Turret {
                     ...initParams,
                     ...this.params
                 };
-                this.params.currTime = 0;
-                this.params.maxTime = 100 + Math.floor(50 * Math.random());
-            },
-            exec(execParams){
-                this.params.currTime++;
 
                 /**@type {Turret} */
                 let turret = this.params.turret;
+                let rndIdleTime = 100 + Math.floor(50 * Math.random());
+                turret.idleTimer = new Counter(rndIdleTime);
+                turret.shootTimer.reset();
+            },
+            exec(execParams){
+                /**@type {Turret} */
+                let turret = this.params.turret;
+
+                turret.idleTimer.count();
 
                 let foundPlayer = turret.searchForPlayer();
                 if(foundPlayer) return 'targetting';
 
-                let newAngle = Util.lerp(turret.directionAngle, turret.targetDirectionAngle, 0.1);
-                
-                if(Math.abs(turret.directionAngle - newAngle) < 0.05) return 'idle';
-                else turret.directionAngle = newAngle;
+                let newDirection = turret.direction.lerp(turret.targetDirection,0.1).normalized();
 
+                if(newDirection.dot(turret.targetDirection)>0.9) return 'idle';
+                else turret.direction = newDirection;
 
-                if(this.params.currTime<=this.params.maxTime) return this.name;
+                if(!turret.idleTimer.over()) return this.name;
                 return 'idle';
             },
             draw(drawParams){
-                let normTime = this.params.currTime / this.params.maxTime;
-                
                 /** @type {Turret} */
                 let turret = this.params.turret;
                 turret.drawTurret();
@@ -83,30 +94,30 @@ export default class Turret {
                     ...initParams,
                     ...this.params
                 };
-                this.params.currTime = 0;
-            },
-            exec(execParams){
-                this.params.currTime++;
 
                 /**@type {Turret} */
                 let turret = this.params.turret;
+                turret.shootTimer.reset();
+            },
+            exec(execParams){
+                /**@type {Turret} */
+                let turret = this.params.turret;
+                
+                turret.shootTimer.count();
 
                 let foundPlayer = turret.searchForPlayer();
                 if(!foundPlayer) return 'moving';
                 
-                let direction = foundPlayer.position.sub(turret.position);
-                turret.targetDirectionAngle = direction.normalized().toAng();
+                //Follow player
+                let newDirection = foundPlayer.position.sub(turret.position).normalized();
+                turret.targetDirection = newDirection;
+                turret.direction = turret.direction.lerp(turret.targetDirection,0.1).normalized();
 
-                //TODO: FIX: When swapping angles from -PI to +PI, the lerp takes the long path
-                let newAngle = Util.lerpAngle(turret.directionAngle, turret.targetDirectionAngle, 0.1);
-
-                console.log(
-                    turret.targetDirectionAngle,
-                    turret.directionAngle,
-                    newAngle
-                );
-                                
-                turret.directionAngle = newAngle;
+                //Shoot player
+                if(turret.shootTimer.over()) {
+                    turret.shootBullet();
+                    turret.shootTimer.reset();
+                }
 
                 return this.name;
             },
@@ -124,23 +135,25 @@ export default class Turret {
             name: 'idle',
             init(initParams) {
                 this.params = initParams;
-                this.params.currTime = 0;
-                this.params.maxTime = 100;
-            },
-            exec(execParams){
-                this.params.currTime++;
-
-                if(this.params.currTime<=this.params.maxTime) return this.name;
-
                 /** @type {Turret} */
                 let turret = this.params.turret;
+                turret.shootTimer.reset();
+                turret.idleTimer.reset();
+            },
+            exec(execParams){
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                turret.idleTimer.count();
+
+                let foundPlayer = turret.searchForPlayer();
+                if(foundPlayer) return 'targetting';
+
+                if(!turret.idleTimer.over()) return this.name;
                 
-                turret.targetDirectionAngle = Math.random() * 6.283;
+                turret.targetDirection = V3.normToTrig(Math.random());
                 return 'moving';
             },
             draw(drawParams){
-                let normTime = this.params.currTime / this.params.maxTime;
-                
                 /** @type {Turret} */
                 let turret = this.params.turret;
                 turret.drawTurret();
@@ -149,30 +162,60 @@ export default class Turret {
                 return this.params;
             }
         });
+        
+        let deactivated = new State({
+            name: 'deactivated',
+            init(initParams) {
+                this.params = initParams;
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                turret.deactivateTimer.reset();
+            },
+            exec(execParams){
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                turret.deactivateTimer.count();
 
-        this.stateMachine = new StateMachine([moving,targetting,idle]);
-        return this;
+                if(!turret.deactivateTimer.over()) return this.name;
+                
+                turret.targetDirection = V3.normToTrig(Math.random());
+                return 'moving';
+            },
+            draw(drawParams){
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                let deactivatedColor = Color.fromVec(turret.color.toVec().scale(0.5));
+                turret.drawTurret(this.radius,deactivatedColor);
+            },
+            exit(exitParams) {
+                return this.params;
+            }
+        });
+
+        this.stateMachine = new StateMachine([moving,targetting,deactivated,idle]);
     }
     setPosition(position) {
         this.position = position;
     }
-    drawTurret() {
-        /** @type {Turret} */
-        let turret = this;
-
-        let turretDirection = V3.angToVec(turret.directionAngle);
+    drawTurret(size = this.radius, color = this.color, offset = new V3(0,0)) {
+        let drawPosition = this.position.add(offset);
         //Area
-        this.renderer.fillCircle(this.position,this.searchRadius,new Color(0.2,0.2,0.2,0.2));
+        this.renderer.fillCircle(drawPosition,this.searchRadius,new Color(0.3,0.3,0.3,0.3));
 
         //Body
-        this.renderer.fillCircle(this.position,this.bodySize,this.color);
+        this.renderer.fillCircle(drawPosition,size,color);
 
-        let tipColor = Color.fromVec(this.color.toVec().scale(1.1));
-        let tipStart = turret.position.add(turretDirection.scale(turret.bodySize/2));
-        let tipEnd = tipStart.add(turretDirection.scale(turret.tipHeight));
-        
         //Tip
-        this.renderer.fillLine(tipStart,tipEnd, tipColor, turret.tipWidth);
+        let tipColor = Color.fromVec(color.toVec().scale(1.2));
+        let tipStart = drawPosition.add(this.direction.scale(size/2));
+
+        let tipEnd = tipStart.add(this.direction.scale(this.tipHeight));
+
+        let shouldRecoil = this.stateMachine.currState.name === 'targetting';
+        let tipRecoil = 0.25 - Math.min(this.shootTimer.progress(),0.25);
+        if(shouldRecoil) tipEnd = tipEnd.sub(this.direction.scale(tipRecoil * this.tipHeight));
+        
+        this.renderer.fillLine(tipStart,tipEnd, tipColor, this.tipWidth);
     }
     searchForPlayer() {
         let players = this.entityManager.getEntities(Player);
@@ -185,5 +228,28 @@ export default class Turret {
         if(direction.mag() > this.searchRadius) return null;
         
         return player;
+    }
+    followAim(position,strength = 0.1, margin = 0.1) {
+        let newDirection = position.sub(turret.position);
+        turret.targetDirection = newDirection.normalized();
+        turret.direction = turret.direction.lerp(turret.targetDirection,strength).normalized();
+    }
+    shootBullet() {
+        let newBullet = new this.bulletType(this.position, this.direction);
+        let player = this.entityManager.getEntities(Player)[0];
+        
+        if(newBullet.setTarget) newBullet.setTarget(player);
+        
+        newBullet.owner = this;
+        newBullet.setTargetType(Player);
+        newBullet.stateMachine.init();
+
+        this.entityManager.addEntity(newBullet);
+    }
+    setBulletType(type) {
+        this.bulletType = type;
+    }
+    hit() {
+        this.stateMachine.swap('deactivated')
     }
 }

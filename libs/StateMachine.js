@@ -1,3 +1,6 @@
+
+import V3 from "./V3.js";
+
 export default class StateMachine {
     states = [];
     constructor(states, initialStateIndex = 0, stateChangeCallback = ()=>{}) {
@@ -38,7 +41,7 @@ export class State {
         params,
         init = ()=>{},
         exec = ()=>{},
-        exit = ()=>{},
+        exit = (exitParams)=>{return this.params},
         draw = ()=>{},
         renderer,
         inputManager

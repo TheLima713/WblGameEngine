@@ -1,10 +1,12 @@
+import Color from './Color.js';
 import Util from './Util.js'
 
 export default class V3 {
   x = 0;
   y = 0;
   z = 0;
-  static ZERO = new V3(0, 0, 0);
+  static one = new V3(1,1,1);
+  static zero = new V3(0, 0, 0);
   static UP = new V3(0, 1, 0);
   static DOWN = new V3(0, -1, 0);
   static LEFT = new V3(-1, 0, 0);
@@ -141,12 +143,41 @@ export default class V3 {
     );
   }
   static angToVec(ang) {
-    return new V3(
+    let vec = new V3(
         Math.cos(ang),
-        -Math.sin(ang)
-    )
+        Math.sin(ang)
+    );
+    let out = new V3(
+        vec.x,
+        -vec.y
+    );
+    return out;
   }
   toAng() {
     return Math.atan2(-this.y, this.x)
+  }
+  floor() {
+    return new V3(
+        Math.floor(this.x),
+        Math.floor(this.y),
+        Math.floor(this.z)
+    )
+  }
+  ceil() {
+    return new V3(
+        Math.ceil(this.x),
+        Math.ceil(this.y),
+        Math.ceil(this.z)
+    )
+  }
+  toColor() {
+    return new Color(this.x,this.y,this.z,1);
+  }
+  clamp(v2,v1 = new V3(0,0,0)) {
+    return new V3(
+        Util.clamp(this.x,v1.x,v2.x),
+        Util.clamp(this.y,v1.y,v2.y),
+        Util.clamp(this.z,v1.z,v2.z)
+    );
   }
 }

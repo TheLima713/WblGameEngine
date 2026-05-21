@@ -1,6 +1,11 @@
+import InputManager from "./InputManager.js";
+import Renderer from "./Renderer.js";
+
 export default class EntityManager {
     entities;
+    /**@type {Renderer} */
     renderer;
+    /**@type {InputManager} */
     inputManager;
     constructor(renderer,inputManager) {
         this.entities = [];
@@ -36,5 +41,8 @@ export default class EntityManager {
         this.entities.forEach((entity)=>{
             entity.stateMachine.draw();
         })
+    }
+    setRendererOffset(offset) {
+        this.renderer.setOffset(offset);
     }
 }

@@ -34,6 +34,14 @@ export default class Color {
             ')'
         )
     }
+    invert() {
+        return new Color(
+            1 - this.r,
+            1 - this.g,
+            1 - this.b,
+            this.a
+        )
+    }
     toHex() {
         let normToHex = (n, pad = 2) => {
             return Math.floor(255*n)

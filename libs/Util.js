@@ -17,7 +17,7 @@ export default class Util {
         let normalized = (v-vMin)/vMax
         return oMin+(oMax-oMin)*normalized
     }
-    clamp(v,min,max) {
+    static clamp(v,min,max) {
         return Math.min(Math.max(v,min),max)
     }
     static lerp(n1,n2,t) {

@@ -1,28 +1,36 @@
 import V3 from "./V3.js";
 
-export default class Color {
-    r;
-    g;
-    b;
-    a;
-    static white = new Color(1,1,1);
-    static gray = new Color(0.5,0.5,0.5);
-    static black = new Color(0,0,0);
-    static red = new Color(1,0,0);
-    static yellow = new Color(1,1,0);
-    static green = new Color(0,1,0);
-    static blue = new Color(0,0,1);
+export default class Color extends V3 {
+    a = 1;
+    static get white() { return new Color(1,1,1); }
+    static get gray() { return new Color(0.5,0.5,0.5); }
+    static get black() { return new Color(0,0,0); }
+    static get red() { return new Color(1,0,0); }
+    static get yellow() { return new Color(1,1,0); }
+    static get green() { return new Color(0,1,0); }
+    static get cyan() { return new Color(0,1,1); }
+    static get blue() { return new Color(0,0,1); }
+    
+    get r() { return this.x; }
+    get g() { return this.y; }
+    get b() { return this.z; }
+    set r(v) { this.x = v; }
+    set g(v) { this.y = v; }
+    set b(v) { this.z = v; }
+
     constructor(r,g,b,a=1) {
-        this.r = r;
-        this.g = g;
-        this.b = b;
+        super(r,g,b);
         this.a = a;
+    }
+    toVec() {
+        return this;
+    }
+    setAlpha(a) {
+        this.a = a;
+        return this;
     }
     static fromVec(v1,a=1) {
         return new Color(v1.x,v1.y,v1.z,a);
-    }
-    toVec() {
-        return new V3(this.r,this.g,this.b);
     }
     static vecToRGB(v1,a=1) {
         return (
@@ -55,5 +63,11 @@ export default class Color {
             + normToHex(this.b)
             + normToHex(this.a)
         )
+    }
+    diff(c2) {
+        return this.toVec().sub(c2.toVec()).abs().clamp(V3.one).toColor();
+    }
+    copy() {
+        return new Color(this.r,this.g,this.b,this.a);
     }
 }

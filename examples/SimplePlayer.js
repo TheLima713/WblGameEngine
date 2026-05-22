@@ -14,7 +14,7 @@ import Turret from "./SimpleTurret.js";
  * @returns 
  */
 export default class Player {
-    color = Color.red;
+    color = new Color(0.9,0.2,0.1);
     radius = 15;
     
     spawnPoint = new V3(120,120);
@@ -26,7 +26,7 @@ export default class Player {
     waveTimer = new Counter(500);
     spawnTimer = new Counter(50);
     frozenTimer = new Counter(150);
-    shootTimer = new Counter(150);
+    shootTimer = new Counter(50);
     dyingTimer = new Counter(50);
 
     /**@type {StateMachine} */

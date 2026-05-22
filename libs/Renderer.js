@@ -134,26 +134,15 @@ export default class Renderer {
         let imageData = this.context.getImageData(0,0,this.size.x,this.size.y);
         let img = ImageProcessor.fromImageData(this,imageData);
 
-        img = img.pixelate(frame);
-        //let effectIndex = Math.floor(frame / 123) % 5;
-        //console.log(effectIndex)
-        //switch(effectIndex) {
-        //    case 0:
-        //        img = img.pixelate(frame);
-        //        break;
-        //    case 1:
-        //        img = img.invert(frame);
-        //        break;
-        //    case 2:
-        //        img = img.addTint(frame,new Color(0.4,0.2,0.0,0.5));
-        //        break;
-        //    case 3:
-        //        img = img.CRT(frame);
-        //        break;
-        //    case 4:
-        //        img = img.wavy(frame);
-        //        break;
-        //}
+        img = img
+            .chromaticAberration(frame)
+            .pixelate(frame,3)
+            .CRT(frame,3,3)
+            .fishEye(frame,0.25, 1)
+        ;
         this.context.putImageData(img.toImageData(),0,0);
+    }
+    getImageData() {
+        return this.context.getImageData(0,0,this.size.x,this.size.y);
     }
 }

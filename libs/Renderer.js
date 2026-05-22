@@ -134,7 +134,7 @@ export default class Renderer {
         let imageData = this.context.getImageData(0,0,this.size.x,this.size.y);
         let img = ImageProcessor.fromImageData(this,imageData);
 
-        img = img.pixelate(frame);
+        //if(frame>3) img = img.bloom(frame);
         //let effectIndex = Math.floor(frame / 123) % 5;
         //console.log(effectIndex)
         //switch(effectIndex) {

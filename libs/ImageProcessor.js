@@ -138,27 +138,22 @@ export default class ImageProcessor {
     bloom(frame) {
         let out = this.copy()
         this.gridLoop((/** @type {V3} */pos)=>{
-            if(this.getPixel(pos).toVec().mag() < 0.1) {
-                out.setPixel(pos,this.getPixel(pos));
-                return;
-            }
-
-            let colorSpreadVec = this.getPixel(pos).toVec().scale(0.5);
-            //path 1: spread its color | path 2: receive neighboring colors (averaging)
-            this.gridLoop(
-                (/** @type {V3} */pos)=>{
-                    //add spread to out
-                },
-                this.pos.add(V3.one),
-                this.pos.sub(V3.one)
-            );
-            let waveSpeed = 0.1;
-            let wavePhase = waveSpeed * (frame + pos.y);
-            let offset = 10 * Math.cos(wavePhase);
-            
-            let newPos = pos.add(V3.RIGHT.scale(offset)).floor();
-            out.setPixel(pos,this.getPixel(newPos));
+            out.setPixel(pos,this.getPixel(pos));
         });
+        this.gridLoop(
+            (/** @type {V3} */neighborPos)=>{
+                this.gridLoop((/** @type {V3} */pos)=>{
+
+                    let currPixel = out.getPixel(pos);
+                    let nborPixel = out.getPixel(pos.add(neighborPos));
+                    let finalColor = currPixel.toVec().add(nborPixel.toVec().scale(1/9));
+                    
+                    out.setPixel(pos,finalColor);
+                });
+            },
+            V3.zero.add(new V3(3,3)),
+            V3.zero.sub(new V3(3,3))
+        );
         return out;
     }
 }

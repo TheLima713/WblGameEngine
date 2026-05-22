@@ -13,12 +13,10 @@ import Player from "./examples/SimplePlayer.js";
 import Turret from "./examples/SimpleTurret.js";
 import Counter from "./libs/Counter.js";
 import HomingBullet from "./examples/HomingBullet.js";
-import GLRenderer from "./libs/GLRenderer.js";
-import Color from "./libs/Color.js";
 
 console.log('Hello, world!');
 
-let renderer = new Renderer('canvas',new V3(960,540));
+let renderer = new Renderer('canvas',new V3(1920,1080).scale(1/4));
 let inputManager = new InputManager('canvas');
 let entityManager = new EntityManager(renderer,inputManager);
 let frameCounter = new Counter(0);

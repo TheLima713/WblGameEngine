@@ -10,6 +10,10 @@ export default class InputManager {
         rightClick: false,
         scrollDelta: 0
     };
+    touch = {
+        touching: false,
+        position: new V3(0,0)
+    }
     keyboard = {
         'up': false
         //...
@@ -61,6 +65,8 @@ export default class InputManager {
             var y = event.changedTouches[0].clientY - rect.top;
             
             this.mouse.leftClick = true;
+
+            this.touch.touching = true;
             this.mouse.position = new V3(x,y);
             
             this.onInput(event);
@@ -73,6 +79,9 @@ export default class InputManager {
             var y = event.changedTouches[0].clientY - rect.top;
             
             this.mouse.position = new V3(x,y);
+
+            this.touch.touching = true;
+            this.touch.position = new V3(x,y);
             
             this.onInput(event);
         });
@@ -86,6 +95,9 @@ export default class InputManager {
             this.mouse.leftClick = false;
             this.mouse.position = new V3(x,y);
             
+            this.touch.touching = false;
+            this.touch.position = V3.zero;
+
             this.onInput(event);
         });
 

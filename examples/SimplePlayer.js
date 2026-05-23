@@ -190,6 +190,7 @@ export default class Player {
     handleMovement() {
         //Aiming
         let mousePosition = this.inputManager.mouse.position;
+        
         let screenPosition = this.renderer.getScreenPosition(this.position);
         let newDirection = mousePosition.sub(screenPosition).normalized();
         this.direction = newDirection;
@@ -200,7 +201,11 @@ export default class Player {
             if(this.inputManager.keyboard[key]) moveDirection = moveDirection.add(this.mapInputToDir(key));
         })
         moveDirection = moveDirection.normalized();
+        
+        if(this.inputManager.touch.touching) moveDirection = newDirection;
+
         this.position = this.position.add(moveDirection.scale(5));
+        
     }
     mapInputToDir(input) {
         switch(input) {

@@ -54,7 +54,6 @@ setInterval(()=>{
 
     //entityManager.renderer.postProcess(frameCounter.currValue);
     SM.setImageData(renderer.getImageData());
-    
     SM.runShader(
         'tint',
         {

@@ -1,14 +1,15 @@
 import Color from "./Color.js";
 import V3 from "./V3.js";
 import ImageProcessor from "./ImageProcessor.js"
+import ShaderManager from "./ShaderManager.js";
 
 export default class Renderer {
     /** @type {HTMLCanvasElement} */
     canvas;
     /** @type {CanvasRenderingContext2D} */
     context;
-    /** @type {WebGL2RenderingContext} */
-    gl;
+    /** @type {ShaderManager} */
+    shaderManager;
     size = new V3(0,0);
     offset = new V3(0,0);
     /**
@@ -22,7 +23,8 @@ export default class Renderer {
         this.canvas.width = size.x;
         this.canvas.height = size.y;
         this.context = this.canvas.getContext('2d',{ willReadFrequently: true });
-        this.gl = this.canvas.getContext('webgl2', {alpha: true});
+
+        this.shaderManager = new ShaderManager('gl-'+canvasId,size);
     }
     /**
      * 
@@ -131,16 +133,18 @@ export default class Renderer {
         return position.add(this.offset)
     }
     postProcess(frame) {
-        let imageData = this.context.getImageData(0,0,this.size.x,this.size.y);
-        let img = ImageProcessor.fromImageData(this,imageData);
+        let CAOffset = Math.abs(Math.sin(frame / 20));
+        CAOffset *= 5 / this.size.x;
+        
+        this.shaderManager.setImageData(this.getImageData());
 
-        img = img
-            .chromaticAberration(frame)
-            .pixelate(frame,3)
-            .CRT(frame,3,3)
-            .fishEye(frame,0.25, 1)
-        ;
-        this.context.putImageData(img.toImageData(),0,0);
+        this.shaderManager.runShader('tint');
+
+        this.shaderManager.runShader('chromaberration');
+        this.shaderManager.runShader('crt');
+        this.shaderManager.runShader('fisheye');
+        
+        this.setImageData(this.shaderManager.getImageData());
     }
     getImageData(flipY = false) {
         /** @type {ImageData} */

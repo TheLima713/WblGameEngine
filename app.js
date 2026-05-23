@@ -16,13 +16,16 @@ import HomingBullet from "./examples/HomingBullet.js";
 import GLRenderer from "./libs/ShaderManager.js";
 import Color from "./libs/Color.js";
 import ShaderManager from "./libs/ShaderManager.js";
+import WebGLRenderer from "./libs/WebGLRenderer.js";
 
 console.log('Hello, world!');
 
-let SM = new ShaderManager('gl-canvas',new V3(1920,1080).scale(0.5));
-await SM.loadShaders();
+let renderer = new Renderer('canvas',new V3(1920,1080).scale(0.75));
+//await renderer.shaderManager.loadShaders();
 
-let renderer = new Renderer('canvas',new V3(960,540));
+let wglr = new WebGLRenderer('gl-canvas',new V3(1920,1080).scale(0.75));
+await wglr.load();
+
 let inputManager = new InputManager('canvas');
 let entityManager = new EntityManager(renderer,inputManager);
 let frameCounter = new Counter(0);
@@ -52,31 +55,15 @@ setInterval(()=>{
     
     let afterExec = Date.now();
 
-    //entityManager.renderer.postProcess(frameCounter.currValue);
-    SM.setImageData(renderer.getImageData());
-    SM.runShader(
-        'tint',
-        {
-            tintColor: new Color(0,0,0.05)
-        }
+    wglr.pushTriToBuffer(
+        new V3(10,100),
+        new V3(50,250),
+        new V3(350,30),
+        Color.red
     );
-    SM.runShader(
-        'chromaberration',
-        {
-            offset: 5 / renderer.size.x
-        }
-    );
-    SM.runShader('crt');
-    SM.runShader(
-        'fisheye',
-        {
-            warp: 0.25
-        }
-    );
-    
-    renderer.setImageData(SM.getImageData());
+    wglr.draw();
     
     let afterPost = Date.now();
 
-    //console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
+    console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
 },1000/60);

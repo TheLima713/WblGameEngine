@@ -12,12 +12,15 @@ export default class ShaderManager {
     gl;
     size = new V3(0,0);
     shaders = [];
+    frameBuffer;
     constructor(canvasId, size) {
         this.canvas = document.getElementById(canvasId);
         this.size = size;
         this.canvas.width = size.x;
         this.canvas.height = size.y;
+        
         this.gl = this.canvas.getContext('webgl2', {alpha: true});
+        this.initGL();
     }
     setImageData(imageData) {
         this.canvasBuffer = imageData;
@@ -33,18 +36,7 @@ export default class ShaderManager {
         for(let i = 0; i < pixels.length; i++) imageData.data[i] = pixels[i];
         return imageData;
     }
-    async loadShaders() {
-        let nameList = ['tint','invert','crt','fisheye','chromaberration'];
-        nameList.forEach(async (name)=>{
-            this.shaders[name] = {
-                name: name,
-                vs_source: await this.getShaderSource(`../shaders/${name}.vert`),
-                fs_source: await this.getShaderSource(`../shaders/${name}.frag`)
-            }
-            this.shaders[name].program = this.createProgram(name);
-            this.setVertexBuffer(this.shaders[name].program);
-        })
-        
+    initGL() {
         const texture = this.gl.createTexture();
         this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
         
@@ -77,8 +69,34 @@ export default class ShaderManager {
             this.gl.TEXTURE_WRAP_T,
             this.gl.CLAMP_TO_EDGE
         );
+    }
+    async loadShaders() {
+        let nameList = ['tint','invert','crt','fisheye','chromaberration'];
+        let paramList = [
+            {
+                tintColor: new Color(0,0,0.05)
+            },
+            {},
+            {},
+            {
+                warp: 0.25
+            },
+            {
+                offset: 0.005
+            }
+        ]
+        nameList.forEach(async (name, index)=>{
+            this.shaders[name] = {
+                name: name,
+                vs_source: await this.getShaderSource(`../shaders/${name}.vert`),
+                fs_source: await this.getShaderSource(`../shaders/${name}.frag`),
+                params: paramList[index]
+            }
+            this.shaders[name].program = this.createProgram(name);
+            this.setVertexBuffer(this.shaders[name].program);
+        })
 
-        console.log(this.shaders)
+        console.log(this.shaders);
     }
     async getShaderSource(path) {
         let response = await fetch(path);
@@ -117,7 +135,7 @@ export default class ShaderManager {
             );
         }
     }
-    runShader(name, params = {}) {
+    runShader(name, params) {
         if(!this.shaders[name]) return;
         let program = this.shaders[name].program;
 
@@ -125,7 +143,10 @@ export default class ShaderManager {
 
         this.gl.useProgram(program);
         
-        Object.entries(params).forEach(([key,value])=>{
+        let shaderParams = params;
+        if(shaderParams===undefined) shaderParams = this.shaders[name].params;
+
+        Object.entries(shaderParams).forEach(([key,value])=>{
             this.setAttribute(program,key,value);
         });
 

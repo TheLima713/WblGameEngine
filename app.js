@@ -53,15 +53,31 @@ setInterval(()=>{
     let afterExec = Date.now();
 
     //entityManager.renderer.postProcess(frameCounter.currValue);
-    SM.setImageData(entityManager.renderer.getImageData());
+    SM.setImageData(renderer.getImageData());
     
-    SM.runShader('chromaberration');
+    SM.runShader(
+        'tint',
+        {
+            tintColor: new Color(0,0,0.05)
+        }
+    );
+    SM.runShader(
+        'chromaberration',
+        {
+            offset: 5 / renderer.size.x
+        }
+    );
     SM.runShader('crt');
-    SM.runShader('fisheye');
+    SM.runShader(
+        'fisheye',
+        {
+            warp: 0.25
+        }
+    );
     
-    entityManager.renderer.setImageData(SM.getImageData());
+    renderer.setImageData(SM.getImageData());
     
     let afterPost = Date.now();
 
-    console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
+    //console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
 },1000/60);

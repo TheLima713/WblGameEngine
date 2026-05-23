@@ -42,8 +42,42 @@ export default class ShaderManager {
                 fs_source: await this.getShaderSource(`../shaders/${name}.frag`)
             }
             this.shaders[name].program = this.createProgram(name);
-            this.createParameters(this.shaders[name].program);
+            this.setVertexBuffer(this.shaders[name].program);
         })
+        
+        const texture = this.gl.createTexture();
+        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+        
+        this.gl.pixelStorei(
+            this.gl.UNPACK_FLIP_Y_WEBGL,
+            true
+        );
+        
+        //Parameters ? idk
+        this.gl.texParameteri(
+            this.gl.TEXTURE_2D,
+            this.gl.TEXTURE_MIN_FILTER,
+            this.gl.NEAREST
+        );
+
+        this.gl.texParameteri(
+            this.gl.TEXTURE_2D,
+            this.gl.TEXTURE_MAG_FILTER,
+            this.gl.NEAREST
+        );
+
+        this.gl.texParameteri(
+            this.gl.TEXTURE_2D,
+            this.gl.TEXTURE_WRAP_S,
+            this.gl.CLAMP_TO_EDGE
+        );
+
+        this.gl.texParameteri(
+            this.gl.TEXTURE_2D,
+            this.gl.TEXTURE_WRAP_T,
+            this.gl.CLAMP_TO_EDGE
+        );
+
         console.log(this.shaders)
     }
     async getShaderSource(path) {
@@ -55,12 +89,46 @@ export default class ShaderManager {
         let data = await response.text();
         return data;
     }
-    runShader(name) {
+    setAttribute(program, name, value) {
+        let uniformLocation = this.gl.getUniformLocation(program,name);
+
+        if(typeof value === 'number') {
+            this.gl.uniform1f(
+                uniformLocation,
+                value
+            );
+        }
+        if(value instanceof Color) {
+            this.gl.uniform4f(
+                uniformLocation,
+                value.r,
+                value.g,
+                value.b,
+                value.a
+            );
+        }
+        if(value instanceof V3) {
+            this.gl.uniform4f(
+                uniformLocation,
+                value.x,
+                value.y,
+                value.z,
+                0
+            );
+        }
+    }
+    runShader(name, params = {}) {
+        if(!this.shaders[name]) return;
         let program = this.shaders[name].program;
 
         this.setImageDataBuffer(this.canvasBuffer);
 
         this.gl.useProgram(program);
+        
+        Object.entries(params).forEach(([key,value])=>{
+            this.setAttribute(program,key,value);
+        });
+
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
 
         this.canvasBuffer = this.getImageData();
@@ -89,7 +157,7 @@ export default class ShaderManager {
      * 
      * @param {WebGLProgram} program 
      */
-    createParameters(program) {
+    setVertexBuffer(program) {
         //Set UV texture's triangles' positions
         //aPos is in WordlSpace ( [-1,1] ) and aUV is in UVSpace ( [0,1] )
 
@@ -148,14 +216,6 @@ export default class ShaderManager {
     setImageDataBuffer(imageData) {
         let {width, height, data} = imageData;
 
-        const texture = this.gl.createTexture();
-        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-                
-        this.gl.pixelStorei(
-            this.gl.UNPACK_FLIP_Y_WEBGL,
-            true
-        );
-        
         this.gl.texImage2D(
             this.gl.TEXTURE_2D,         //target
             0,                          //mipmap level
@@ -165,32 +225,8 @@ export default class ShaderManager {
             0,                          //border
             this.gl.RGBA,               //source format
             this.gl.UNSIGNED_BYTE,      //source type
-            data                        //pixel data
+            imageData                        //pixel data
         );
 
-        //Parameters ? idk
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_MIN_FILTER,
-            this.gl.NEAREST
-        );
-
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_MAG_FILTER,
-            this.gl.NEAREST
-        );
-
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_WRAP_S,
-            this.gl.CLAMP_TO_EDGE
-        );
-
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_WRAP_T,
-            this.gl.CLAMP_TO_EDGE
-        );
     }
 }

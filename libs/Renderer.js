@@ -142,8 +142,19 @@ export default class Renderer {
         ;
         this.context.putImageData(img.toImageData(),0,0);
     }
-    getImageData() {
-        return this.context.getImageData(0,0,this.size.x,this.size.y);
+    getImageData(flipY = false) {
+        /** @type {ImageData} */
+        let imgData = this.context.getImageData(0,0,this.size.x,this.size.y);
+        if(!flipY) return imgData;
+
+        let arr = [];
+        let rowByteSize = 4 * imgData.width;
+        for(let y = imgData.height-1; y>=0; y--) {
+            arr.push(imgData.data.slice(y * rowByteSize, (y+1) * rowByteSize));
+        }
+        for(let i = 0; i<arr.length; i++) imgData.data[i] = arr[i];
+
+        return imgData;
     }
     setImageData(imageData) {
         this.context.putImageData(imageData,0,0);

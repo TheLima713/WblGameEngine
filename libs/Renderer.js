@@ -145,4 +145,7 @@ export default class Renderer {
     getImageData() {
         return this.context.getImageData(0,0,this.size.x,this.size.y);
     }
+    setImageData(imageData) {
+        this.context.putImageData(imageData,0,0);
+    }
 }

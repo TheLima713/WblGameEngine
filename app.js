@@ -40,13 +40,28 @@ entityManager.addEntity(player);
 entityManager.addEntity(turret);
 entityManager.addEntity(turret2);
 
+let ms = 0;
+
 entityManager.init();
 setInterval(()=>{
     frameCounter.count();
 
+    let beforeExec = Date.now();
+
     entityManager.run();
+    
+    let afterExec = Date.now();
+
     //entityManager.renderer.postProcess(frameCounter.currValue);
-    let imgData = entityManager.renderer.getImageData();
-    SM.runShader('crt', imgData);
-    SM.runShader('tint', SM.getImageData());
+    SM.setImageData(entityManager.renderer.getImageData());
+    
+    SM.runShader('chromaberration');
+    SM.runShader('crt');
+    SM.runShader('fisheye');
+    
+    entityManager.renderer.setImageData(SM.getImageData());
+    
+    let afterPost = Date.now();
+
+    console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
 },1000/60);

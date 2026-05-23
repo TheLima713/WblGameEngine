@@ -4,6 +4,8 @@ import V3 from "./V3.js";
 export default class ShaderManager {
     /** @type {HTMLCanvasElement} */
     canvas;
+    /** @type {ImageData} */
+    canvasBuffer;
     /** @type {CanvasRenderingContext2D} */
     context;
     /** @type {WebGL2RenderingContext} */
@@ -17,6 +19,9 @@ export default class ShaderManager {
         this.canvas.height = size.y;
         this.gl = this.canvas.getContext('webgl2', {alpha: true});
     }
+    setImageData(imageData) {
+        this.canvasBuffer = imageData;
+    }
     getImageData() {
         const width = this.gl.drawingBufferWidth;
         const height = this.gl.drawingBufferHeight;
@@ -24,28 +29,21 @@ export default class ShaderManager {
         
         this.gl.readPixels(0, 0, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
         
-        return {
-            width: width,
-            height: height,
-            data: pixels
-        };
+        let imageData = new ImageData(width,height);
+        for(let i = 0; i < pixels.length; i++) imageData.data[i] = pixels[i];
+        return imageData;
     }
     async loadShaders() {
-        this.shaders['tint'] = {
-            name: 'tint',
-            vs_source: await this.getShaderSource('../shaders/tint.vert'),
-            fs_source: await this.getShaderSource('../shaders/tint.frag')
-        }
-        this.shaders['invert'] = {
-            name: 'invert',
-            vs_source: await this.getShaderSource('../shaders/invert.vert'),
-            fs_source: await this.getShaderSource('../shaders/invert.frag')
-        }
-        this.shaders['crt'] = {
-            name: 'crt',
-            vs_source: await this.getShaderSource('../shaders/crt.vert'),
-            fs_source: await this.getShaderSource('../shaders/crt.frag')
-        }
+        let nameList = ['tint','invert','crt','fisheye','chromaberration'];
+        nameList.forEach(async (name)=>{
+            this.shaders[name] = {
+                name: name,
+                vs_source: await this.getShaderSource(`../shaders/${name}.vert`),
+                fs_source: await this.getShaderSource(`../shaders/${name}.frag`)
+            }
+            this.shaders[name].program = this.createProgram(name);
+            this.createParameters(this.shaders[name].program);
+        })
         console.log(this.shaders)
     }
     async getShaderSource(path) {
@@ -57,12 +55,15 @@ export default class ShaderManager {
         let data = await response.text();
         return data;
     }
-    runShader(name, imageData) {
-        let program = this.createProgram(name);
-        this.createParameters(program);
+    runShader(name) {
+        let program = this.shaders[name].program;
+
+        this.setImageDataBuffer(this.canvasBuffer);
+
         this.gl.useProgram(program);
-        this.addImageBuffer(imageData);
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+
+        this.canvasBuffer = this.getImageData();
     }
     compileShader(type,source) {
         var shader = this.gl.createShader(type);
@@ -144,7 +145,7 @@ export default class ShaderManager {
      * @param {ImageData} imageData 
      * @param {String} name 
      */
-    addImageBuffer(imageData) {
+    setImageDataBuffer(imageData) {
         let {width, height, data} = imageData;
 
         const texture = this.gl.createTexture();

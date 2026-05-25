@@ -7,6 +7,7 @@ import EntityManager from "../libs/EntityManager.js";
 import Counter from "../libs/Counter.js";
 import Bullet from "./SimpleBullet.js";
 import Turret from "./SimpleTurret.js";
+import WebGLRenderer from "../libs/WebGLRenderer.js";
 
 /**
  * @param {Renderer} renderer 
@@ -14,7 +15,7 @@ import Turret from "./SimpleTurret.js";
  * @returns 
  */
 export default class Player {
-    color = new Color(0.9,0.2,0.1);
+    color = new Color(0.7,0.3,0.2);
     radius = 20;
     
     spawnPoint = new V3(120,120);
@@ -33,7 +34,7 @@ export default class Player {
     stateMachine;
 
     //These are filled by the EntityManager:
-    /**@type {Renderer} */
+    /**@type {WebGLRenderer} */
     renderer;
     /**@type {InputManager} */
     inputManager;
@@ -111,7 +112,7 @@ export default class Player {
                 let player = this.params.player;
 
                 let normTime = player.waveTimer.progress();
-                let waveRadius = (1+0.1 * Math.sin(normTime * 15))
+                let waveRadius = (1+0.05 * Math.sin(normTime * 15))
                 
                 player.draw(player.radius * waveRadius,player.color);
             }
@@ -153,6 +154,8 @@ export default class Player {
                 );
 
                 player.draw(player.radius,freezingColor,shiverOffset);
+
+                player.renderer.requestPostProcessing('invert',{subColor: Color.white.scale(1-normTime)});
             }
         });
         let dying = new State({

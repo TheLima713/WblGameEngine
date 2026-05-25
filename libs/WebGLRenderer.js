@@ -1,4 +1,5 @@
 import Color from "./Color.js";
+import Shader from "./Shader.js";
 import ShaderManager from "./ShaderManager.js";
 import V3 from "./V3.js";
 
@@ -9,16 +10,19 @@ export default class WebGLRenderer {
     canvas;
     /** @type {WebGL2RenderingContext} */
     gl;
-    /** @type {ShaderManager} */
-    shaderManager; 
+    shaders = {};
     programs = {
         drawTri: null
     };
+    shaderExecutionBuffer = [];//expects {name:string,params:{...}}
 
     /** @type {WebGLVertexArrayObject} */
     drawVertexArray;
+    /** @type {WebGLBuffer} Stores the data for each point */
     glVertexBuffer;
     glTextureBuffer;
+    /** Stores the location of each attribute from the buffer */
+    attributeLocations = [];
 
     // local vertex for the geometry points
     vertexBuffer = [];
@@ -60,47 +64,65 @@ export default class WebGLRenderer {
     
     async load() {
         
-        this.bindBuffers();
         await this.loadDrawTriShader();
-        //await this.shaderManager.loadShaders();
 
-        this.createWriteBuffer();
 
-        //Set a few GL parameters
+        this.setImageBuffer();
 
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_MIN_FILTER,
-            this.gl.NEAREST
-        );
-
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_MAG_FILTER,
-            this.gl.NEAREST
-        );
-
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_WRAP_S,
-            this.gl.CLAMP_TO_EDGE
-        );
-
-        this.gl.texParameteri(
-            this.gl.TEXTURE_2D,
-            this.gl.TEXTURE_WRAP_T,
-            this.gl.CLAMP_TO_EDGE
-        );
-        
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
         
+        await this.loadShaders();        
     }
-    createWriteBuffer() {
+    async loadShaders() {
+        const shaderNames = ['blit','crt','tint','fisheye','chromaberration','wave','invert', 'offset'];
+        const shaderParams = {
+            'blit': {},
+            'crt': {
+                stripWidth: 2
+            },
+            'tint': {
+                tintColor: new Color(0.0,0.0,0.1,0.05)
+            },
+            'invert': {
+                subColor: Color.white
+            },
+            'fisheye': {
+                warp: 0.25
+            },
+            'chromaberration': {
+                offset : 0.004
+            },
+            'wave': {
+                strength: 0.01,
+                offset : 0.004,
+                frequency: 111
+            },
+            'offset': {
+                offset : new V3(0,0.001,0)
+            }
+        }
+        const shaders = await Promise.all(
+            shaderNames.map(async (name)=>{
+                let shader = await Shader.load(this.gl,name, shaderParams[name]);
+                return shader;
+            })
+        )
+        shaders.forEach((shader)=>{this.shaders[shader.name] = shader});
+    }
+    setImageBuffer(data) {
         const gl = this.gl;
 
-        this.writeTexture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.writeTexture);
+        this.readTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 1);
+        gl.bindTexture(gl.TEXTURE_2D, this.readTexture);
+        
+        // texture params
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
         gl.texImage2D(
             gl.TEXTURE_2D,
             0,
@@ -112,64 +134,83 @@ export default class WebGLRenderer {
             gl.UNSIGNED_BYTE,
             null
         );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S,     gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T,     gl.CLAMP_TO_EDGE);
 
-        this.writeBuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeBuffer);
+        this.readBuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.readBuffer);
         gl.framebufferTexture2D(
             gl.FRAMEBUFFER,
             gl.COLOR_ATTACHMENT0,
             gl.TEXTURE_2D,
-            this.writeTexture,
+            this.readTexture,
             0
         );
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
-    bindBuffers() {
-        this.glVertexBuffer = this.gl.createBuffer();
-        this.glTextureBuffer = this.gl.createTexture();
-        this.gl.bindBuffer(
-            this.gl.ARRAY_BUFFER,
-            this.glVertexBuffer
-        );
-        this.gl.bindTexture(
-            this.gl.TEXTURE_2D,
-            this.glTextureBuffer
-        );
+        gl.bindTexture(gl.TEXTURE_2D, null);
     }
     async loadDrawTriShader() {
         const gl = this.gl;
 
         const program = gl.createProgram();
         
-        let vertSource = await this.getShaderSource(`../shaders/drawTri.vert`);
-        let vertShader = this.compileShader(gl.VERTEX_SHADER,vertSource);
-        gl.attachShader(program, vertShader);
+        //Compile and bind shaders
 
-        let fragSource = await this.getShaderSource(`../shaders/drawTri.frag`);        
-        let fragShader = this.compileShader(gl.FRAGMENT_SHADER,fragSource);
+        const vertShader = await this.compileShader(gl.VERTEX_SHADER,`../shaders/drawTri.vert`);
+        const fragShader = await this.compileShader(gl.FRAGMENT_SHADER,`../shaders/drawTri.frag`);
+
+        gl.attachShader(program, vertShader);
         gl.attachShader(program, fragShader);
         
         gl.linkProgram(program);
         
         this.drawVertexArray = gl.createVertexArray();
         gl.bindVertexArray(this.drawVertexArray);
+
+        //Bind buffers
+
+        this.glVertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.glVertexBuffer);
 
-        this.addVertexAttribute(program,'aPos',4,0);
-        this.addVertexAttribute(program,'aCol',4,4);
-        this.addVertexAttribute(program,'aUV',2,8);
-        this.addVertexAttribute(program,'aRadius',1,10);
-        this.addVertexAttribute(program,'aType',1,11);
+        //TODO: see if its needed
+        this.glTextureBuffer = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 0);
+        gl.bindTexture(gl.TEXTURE_2D, this.glTextureBuffer);
+        
+        // texture params
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        const aPosLoc = this.addVertexAttribute(program,'aPos',4,0);
+        const aColLoc = this.addVertexAttribute(program,'aCol',4,4);
+        const aUVLoc = this.addVertexAttribute(program,'aUV',2,8);
+        const aRadiusLoc = this.addVertexAttribute(program,'aRadius',1,10);
+        const aTypeLoc = this.addVertexAttribute(program,'aType',1,11);
+        this.attributeLocations = [
+            aPosLoc,
+            aColLoc,
+            aUVLoc,
+            aRadiusLoc,
+            aTypeLoc
+        ];
 
         this.programs.drawTri = program;
 
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        gl.deleteShader(vertShader);
+        gl.deleteShader(fragShader);
+    }
+    async compileShader(type,path) {
+        const shader = this.gl.createShader(type);
+        const source = await this.getShaderSource(path);
+
+        this.gl.shaderSource(shader, source);
+        this.gl.compileShader(shader);
+
+        return shader;
     }
     async getShaderSource(path) {
         let response = await fetch(path);
@@ -180,13 +221,53 @@ export default class WebGLRenderer {
         let data = await response.text();
         return data;
     }
-    compileShader(type,source) {
-        var shader = this.gl.createShader(type);
+    addVertexAttribute(program,name,size,offset) {
+        const aAtribLoc = this.gl.getAttribLocation(program, name);
+        this.gl.vertexAttribPointer(
+            aAtribLoc,                     // memory address? idk
+            size,                       // read this many values per vertex
+            this.gl.FLOAT,              // values are floats (4 bytes each)
+            false,                      // dont normalize
+            4 * this.vertexDataSize,    // each vertex occupies this size, in bytes
+            4 * offset                  // for each vertex, start reading at this byte
+        );
+        this.gl.enableVertexAttribArray(aAtribLoc);
+        return aAtribLoc;
+    }
+    setWriteTexture() {
+        const gl = this.gl;
 
-        this.gl.shaderSource(shader, source);
-        this.gl.compileShader(shader);
+        this.writeTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 2);
+        gl.bindTexture(gl.TEXTURE_2D, this.writeTexture);
 
-        return shader;
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            this.size.x,
+            this.size.y,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null
+        );
+
+        // texture params
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        this.writeBuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeBuffer);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            this.writeTexture,
+            0
+        );
     }
 
     // Drawing
@@ -373,26 +454,6 @@ export default class WebGLRenderer {
         let output = this.vertexBuffer.slice(start,end);
         return output;
     }
-
-    //Shader calling
-
-    draw() {
-        const gl = this.gl;
-
-        let vertexCount = this.vertexBuffer.length / this.vertexDataSize;
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.useProgram(this.programs.drawTri);
-        gl.bindVertexArray(this.drawVertexArray);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.glVertexBuffer);
-
-        this.sendVertexBuffer(this.programs.drawTri);
-        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
     sendVertexBuffer(program) {
         /*
             Each vertex has:
@@ -416,20 +477,66 @@ export default class WebGLRenderer {
 
         this.vertexBuffer = [];
     }
-    addVertexAttribute(program,name,size,offset) {
-        const aAtrib = this.gl.getAttribLocation(program, name);
-        this.gl.vertexAttribPointer(
-            aAtrib,                     // memory address? idk
-            size,                       // read this many values per vertex
-            this.gl.FLOAT,              // values are floats (4 bytes each)
-            false,                      // dont normalize
-            4 * this.vertexDataSize,    // each vertex occupies this size, in bytes
-            4 * offset                  // for each vertex, start reading at this byte
-        );
-        this.gl.enableVertexAttribArray(aAtrib);
+
+    //Shader calling
+
+    draw() {
+        const gl = this.gl;
+
+
+        let vertexCount = this.vertexBuffer.length / this.vertexDataSize;
+        
+        this.setWriteTexture();
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeBuffer);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(this.programs.drawTri);
+        gl.bindVertexArray(this.drawVertexArray);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.glVertexBuffer);
+
+        this.sendVertexBuffer(this.programs.drawTri);
+        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+
+        [this.readBuffer, this.writeBuffer] = [this.writeBuffer, this.readBuffer];
+        [this.readTexture, this.writeTexture] = [this.writeTexture, this.readTexture];
     }
-    postProcess() {
-        //this.shaderManager.runShader('crt', this.writeTexture);
+    postProcess(frame) {
+        let chromaWarp = (Math.sin(frame / 30)) * 0.002;
+        let off = 0.001 * (frame % 15);
+        //let waveOffset = frame / 30 + Math.sin(frame / 50) + 1;
+
+        this.runShader('chromaberration',{offset: chromaWarp});
+        this.runShader('crt');
+        this.runShader('offset',{offset: new V3(off,0,0)});
+
+        //this.runShader('fisheye');
+        //this.runShader('wave',{
+        //    strength: 0.01,
+        //    offset: waveOffset,
+        //    frequency: 50.0
+        //});
+
+        this.shaderExecutionBuffer.forEach((exec)=>{
+            this.runShader(exec.name,exec.params);
+        })
+        this.shaderExecutionBuffer = [];
+
+        this.runShader('blit',{},true);
+    }
+    requestPostProcessing(shaderName,shaderParams) {
+        this.shaderExecutionBuffer.push({
+            name: shaderName,
+            params: shaderParams
+        });
+    }
+    runShader(name, params = {}, isFinal = false) {
+        /** @type {Shader} */
+        const shader = this.shaders[name];
+        shader.run(this.readTexture, isFinal ? null : this.writeBuffer, params);
+        
+        [this.readBuffer, this.writeBuffer] = [this.writeBuffer, this.readBuffer];
+        [this.readTexture, this.writeTexture] = [this.writeTexture, this.readTexture];
     }
 
     // Variables and helpers

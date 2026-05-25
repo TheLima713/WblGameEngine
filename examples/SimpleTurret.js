@@ -16,7 +16,7 @@ import WebGLRenderer from "../libs/WebGLRenderer.js";
  * @returns 
  */
 export default class Turret {
-    color = new Color(0.1,0.4,0.7);
+    color = new Color(0.3,0.4,0.6);
     radius = 25;
     tipWidth = 15;
     tipHeight = 10;
@@ -207,7 +207,7 @@ export default class Turret {
         this.renderer.fillCircle(drawPosition,size,color);
 
         //Tip
-        let tipColor = Color.fromVec(color.toVec().scale(1.2));
+        let tipColor = color.scale(1.2);
         let tipStart = drawPosition.add(this.direction.scale(size/2));
 
         let tipEnd = tipStart.add(this.direction.scale(this.tipHeight));

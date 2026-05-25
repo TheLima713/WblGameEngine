@@ -1,11 +1,11 @@
 precision mediump float;
 
 uniform sampler2D uTexture;
+uniform float stripWidth;
 
 varying vec2 vUV;
 
 void main() {
-    float stripWidth = 3.0;
     vec4 base = texture2D(uTexture, vUV);
     float strip = mod(gl_FragCoord.y,2.0 * stripWidth);
 

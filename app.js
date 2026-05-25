@@ -53,9 +53,14 @@ setInterval(()=>{
     let afterExec = Date.now();
 
     webGLRenderer.draw();
-    webGLRenderer.postProcess();
+    webGLRenderer.postProcess(frameCounter.currValue);
     
     let afterPost = Date.now();
 
     //console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
 },1000/60);
+
+
+// Persio Quests:
+// - Shader pra recortar um layer da mesh 3d e mostrar o 'interior'
+// - Tesselation

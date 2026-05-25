@@ -43,8 +43,11 @@ export default class Shader {
     // Run
     // -------------------------
 
-    run(inputTexture, overrideParams = {}) {
+    run(inputTexture, outputFramebuffer, overrideParams = {}) {
         const gl = this.gl;
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, outputFramebuffer);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
         gl.useProgram(this.program);
         gl.bindVertexArray(this.vao);
@@ -100,13 +103,13 @@ export default class Shader {
         gl.bindVertexArray(vao);
 
         const vertices = new Float32Array([
-            // x     y     u     v
-            -1.0, -1.0,  0.0,  0.0,
-             1.0, -1.0,  1.0,  0.0,
-            -1.0,  1.0,  0.0,  1.0,
-            -1.0,  1.0,  0.0,  1.0,
-             1.0, -1.0,  1.0,  0.0,
-             1.0,  1.0,  1.0,  1.0,
+            // x  y  u  v
+            -1, -1,  0,  1,
+             1, -1,  1,  1,
+            -1,  1,  0,  0,
+            -1,  1,  0,  0,
+             1, -1,  1,  1,
+             1,  1,  1,  0,
         ]);
 
         const vbo = gl.createBuffer();

@@ -5,7 +5,7 @@ export default class ShaderManager {
     /** @type {HTMLCanvasElement} */
     canvas;
     /** @type {ImageData} */
-    canvasBuffer;
+    imageBuffer;
     /** @type {CanvasRenderingContext2D} */
     context;
     /** @type {WebGL2RenderingContext} */
@@ -13,17 +13,13 @@ export default class ShaderManager {
     size = new V3(0,0);
     shaders = [];
     frameBuffer;
-    constructor(canvasId, size) {
-        this.canvas = document.getElementById(canvasId);
-        this.size = size;
-        this.canvas.width = size.x;
-        this.canvas.height = size.y;
-        
-        this.gl = this.canvas.getContext('webgl2', {alpha: true});
+    constructor(webGLContext, size) {  
+        this.gl = webGLContext;
+        this.size = size;      
         this.initGL();
     }
     setImageData(imageData) {
-        this.canvasBuffer = imageData;
+        this.imageBuffer = imageData;
     }
     getImageData() {
         const width = this.gl.drawingBufferWidth;
@@ -139,7 +135,7 @@ export default class ShaderManager {
         if(!this.shaders[name]) return;
         let program = this.shaders[name].program;
 
-        this.setImageDataBuffer(this.canvasBuffer);
+        this.setImageDataBuffer(this.imageBuffer);
 
         this.gl.useProgram(program);
         
@@ -152,7 +148,7 @@ export default class ShaderManager {
 
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
 
-        this.canvasBuffer = this.getImageData();
+        this.imageBuffer = this.getImageData();
     }
     compileShader(type,source) {
         var shader = this.gl.createShader(type);

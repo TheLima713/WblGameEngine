@@ -8,6 +8,7 @@ import EntityManager from "../libs/EntityManager.js";
 import Player from "./SimplePlayer.js";
 import Counter from "../libs/Counter.js";
 import Bullet from "./SimpleBullet.js";
+import WebGLRenderer from "../libs/WebGLRenderer.js";
 
 /**
  * @param {Renderer} renderer 
@@ -16,9 +17,9 @@ import Bullet from "./SimpleBullet.js";
  */
 export default class Turret {
     color = new Color(0.1,0.4,0.7);
-    radius = 20;
+    radius = 25;
     tipWidth = 15;
-    tipHeight = 20;
+    tipHeight = 10;
 
     position = new V3(120,120);
     direction = V3.normToTrig(Math.random());
@@ -34,7 +35,7 @@ export default class Turret {
     /**@type {StateMachine} */
     stateMachine;
     //These are filled by the EntityManager:
-    /**@type {Renderer} */
+    /**@type {WebGLRenderer} */
     renderer;
     /**@type {InputManager} */
     inputManager;
@@ -215,7 +216,20 @@ export default class Turret {
         let tipRecoil = 0.25 - Math.min(this.shootTimer.progress(),0.25);
         if(shouldRecoil) tipEnd = tipEnd.sub(this.direction.scale(tipRecoil * this.tipHeight));
         
-        this.renderer.fillLine(tipStart,tipEnd, tipColor, this.tipWidth);
+        if(this.renderer.gl) {
+            let tipCenter = drawPosition.add(this.direction.scale(size));
+            let tipSize = new V3(this.tipWidth,this.tipHeight);
+            if(shouldRecoil) tipSize = tipSize.mult(new V3(1,1-tipRecoil));
+
+            this.renderer.fillAimedRect(
+                tipCenter,
+                tipSize,
+                this.direction,
+                tipColor
+            );
+            return;
+        }
+        //this.renderer.fillLine(tipStart,tipEnd, tipColor, this.tipWidth);
     }
     searchForPlayer() {
         let players = this.entityManager.getEntities(Player);

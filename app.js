@@ -20,14 +20,11 @@ import WebGLRenderer from "./libs/WebGLRenderer.js";
 
 console.log('Hello, world!');
 
-let renderer = new Renderer('canvas',new V3(1920,1080).scale(0.75));
-//await renderer.shaderManager.loadShaders();
-
-let wglr = new WebGLRenderer('gl-canvas',new V3(1920,1080).scale(0.75));
-await wglr.load();
+let webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080).scale(0.75));
+await webGLRenderer.load();
 
 let inputManager = new InputManager('canvas');
-let entityManager = new EntityManager(renderer,inputManager);
+let entityManager = new EntityManager(webGLRenderer,inputManager);
 let frameCounter = new Counter(0);
 
 let player = new Player();
@@ -39,9 +36,9 @@ let turret2 = new Turret();
 turret2.setPosition(new V3(550,300));
 turret.setBulletType(HomingBullet);
 
-entityManager.addEntity(player);
 entityManager.addEntity(turret);
 entityManager.addEntity(turret2);
+entityManager.addEntity(player);
 
 let ms = 0;
 
@@ -55,15 +52,10 @@ setInterval(()=>{
     
     let afterExec = Date.now();
 
-    wglr.pushTriToBuffer(
-        new V3(10,100),
-        new V3(50,250),
-        new V3(350,30),
-        Color.red
-    );
-    wglr.draw();
+    webGLRenderer.draw();
+    webGLRenderer.postProcess();
     
     let afterPost = Date.now();
 
-    console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
+    //console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
 },1000/60);

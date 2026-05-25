@@ -15,7 +15,7 @@ import Turret from "./SimpleTurret.js";
  */
 export default class Player {
     color = new Color(0.9,0.2,0.1);
-    radius = 15;
+    radius = 20;
     
     spawnPoint = new V3(120,120);
     position = this.spawnPoint;
@@ -111,7 +111,7 @@ export default class Player {
                 let player = this.params.player;
 
                 let normTime = player.waveTimer.progress();
-                let waveRadius = (1+0.25 * Math.sin(normTime * 15))
+                let waveRadius = (1+0.1 * Math.sin(normTime * 15))
                 
                 player.draw(player.radius * waveRadius,player.color);
             }

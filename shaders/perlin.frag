@@ -87,20 +87,39 @@ float getPerlinValue(vec2 fracPoint, float octaves, vec2 scale, vec2 offset) {
     return value;
 }
 
+float mapPerlin(vec2 centered, float octaves, vec2 scale, vec2 offset) {
+    float val = getPerlinValue(
+        centered,
+        octaves,
+        vec2(scale),
+        offset + 0.01
+    );
+    float map = (val + 1.0) / 2.0;
+    return map;
+}
 void main() {
-    vec4 pixel = texture(uTexture, vUV);
 
     vec2 offset = vec2(offset.x, 1.0 - offset.y);
 
     vec2 centered = vUV * 2.0 - 1.0;
-    float val = getPerlinValue(
+    //float val = getPerlinValue(
+    //    centered,
+    //    octaves,
+    //    vec2(scale),
+    //    offset
+    //);
+    //float map = (val + 1.0) / 2.0;
+    
+    float mapOffset = mapPerlin(
         centered,
         octaves,
         vec2(scale),
         offset
     );
-    float map = (val + 1.0) / 2.0;
-
-    vec4 final = vec4(vec3(map * pixel.rgb), 1.0);
+    
+    float perlinStrength = 0.1;
+    
+    vec4 pixel = texture(uTexture, vUV + vec2(perlinStrength * mapOffset,0.0));
+    vec4 final = pixel;//vec4(vec3(pixel.rgb), 1.0);
     fragColor = final;
 }

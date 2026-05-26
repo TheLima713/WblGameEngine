@@ -79,7 +79,7 @@ export default class Bullet {
                     bullet.renderer.fillLine(prevTrailPos,nextTrailPos,trailColor,trailWidth);
                     prevTrailPos = nextTrailPos;
                 }
-
+                        
                 //Bullet
                 bullet.renderer.fillCircle(bullet.position, bullet.radius,bullet.color);
             }

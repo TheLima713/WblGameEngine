@@ -512,15 +512,10 @@ export default class WebGLRenderer {
         this.runShader('tint',{tintColor: Color.white.scale(0.3)})
         this.runShader('chromaberration',{offset: chromaWarp});
         this.runShader('crt', {stripWidth: 2});
-        //this.runShader('radialWave',{
-        //    uPos: new V3(2 * frame,this.size.y / 4).div(this.size),
-        //    uRadius: 0.1 + 0.2 * (1 + Math.sin((10 + frame) / 230)),
-        //    uWidth: 40 / this.size.y
-        //});
         this.runShader('perlin',{
             offset: new V3(frame, 0).div(this.size),
             scale: new V3(2,2),
-            octaves: 8
+            octaves: 12
         })
 
         this.shaderExecutionBuffer.forEach((exec)=>{

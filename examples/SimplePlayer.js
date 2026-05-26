@@ -244,6 +244,7 @@ export default class Player {
 
         //Body
         this.renderer.fillCircle(this.position.add(offset),size,color);
+        
     }
     shootBullet() {
         let newBullet = new Bullet(this.position, this.direction);

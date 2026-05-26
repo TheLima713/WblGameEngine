@@ -197,6 +197,7 @@ export default class Turret {
     }
     setPosition(position) {
         this.position = position;
+        return this;
     }
     drawTurret(size = this.radius, color = this.color, offset = new V3(0,0)) {
         let drawPosition = this.position.add(offset);
@@ -258,10 +259,11 @@ export default class Turret {
         newBullet.setTargetType(Player);
         newBullet.stateMachine.init();
 
-        this.entityManager.addEntity(newBullet);
+        this.entityManager.addEntities([newBullet],true);
     }
     setBulletType(type) {
         this.bulletType = type;
+        return this;
     }
     hit() {
         this.stateMachine.swap('deactivated')

@@ -18,7 +18,7 @@ export default class Player {
     color = new Color(0.7,0.3,0.2);
     radius = 20;
     
-    spawnPoint = new V3(120,120);
+    spawnPoint = new V3(120,320);
     position = this.spawnPoint;
     direction = new V3(0,1);
     
@@ -102,7 +102,16 @@ export default class Player {
 
                 if(IM.mouse.leftClick && player.shootTimer.over()) {
                     player.shootBullet();
-                    player.shootTimer.reset();
+                    player.shootTimer.reset(-15);
+                }
+                if(player.shootTimer.progress()<0) {
+                    let off = 0.003 * Math.sin(player.shootTimer.progress() * 30);
+                    player.renderer.requestPostProcessing(
+                        'offset',
+                        {
+                            offset: new V3(off,0,0)
+                        }
+                    )
                 }
 
                 return this.name;
@@ -221,6 +230,7 @@ export default class Player {
     }
     setPosition(position) {
         this.position = position;
+        return this;
     }
     hit() {
         this.stateMachine.swap('frozen');
@@ -242,6 +252,6 @@ export default class Player {
         newBullet.setTargetType(Turret);
         newBullet.stateMachine.init();
 
-        this.entityManager.addEntity(newBullet);
+        this.entityManager.addEntities([newBullet],true);
     }
 }

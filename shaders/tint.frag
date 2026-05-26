@@ -1,11 +1,14 @@
+#version 300 es
+
 precision mediump float;
 
 uniform sampler2D uTexture;
 uniform vec4 tintColor;
 
-varying vec2 vUV;
+in vec2 vUV;
+out vec4 fragColor;
 
 void main() {
-    vec4 base = texture2D(uTexture, vUV);
-    gl_FragColor = base + tintColor;
+    vec4 base = texture(uTexture, vUV);
+    fragColor = base + tintColor;
 }

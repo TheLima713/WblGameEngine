@@ -12,11 +12,18 @@ export default class EntityManager {
         this.renderer = renderer;
         this.inputManager = inputManager;
     }
-    addEntity(entity) {
-        entity.renderer = this.renderer;
-        entity.inputManager = this.inputManager;
-        entity.entityManager = this;
-        this.entities.push(entity);
+    /**
+     * 
+     * @param {Array} entities 
+     */
+    addEntities(entities, addAtStart = false) {
+        entities.forEach((entity)=>{
+            entity.renderer = this.renderer;
+            entity.inputManager = this.inputManager;
+            entity.entityManager = this;
+            if(addAtStart) this.entities.unshift(entity);
+            else this.entities.push(entity);
+        })
     }
     getEntities(type) {
         let entities = this.entities.filter((entity)=>{

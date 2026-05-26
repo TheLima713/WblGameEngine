@@ -104,12 +104,12 @@ export default class Shader {
 
         const vertices = new Float32Array([
             // x  y  u  v
-            -1, -1,  0,  1,
-             1, -1,  1,  1,
-            -1,  1,  0,  0,
-            -1,  1,  0,  0,
-             1, -1,  1,  1,
-             1,  1,  1,  0,
+            -1, -1,  0,  0,
+             1, -1,  1,  0,
+            -1,  1,  0,  1,
+            -1,  1,  0,  1,
+             1, -1,  1,  0,
+             1,  1,  1,  1,
         ]);
 
         const vbo = gl.createBuffer();
@@ -138,9 +138,9 @@ export default class Shader {
         if (typeof value === 'number') {
             gl.uniform1f(loc, value);
         } else if (value instanceof Color) {
-            gl.uniform4f(loc, value.r, value.g, value.b, value.a ?? 1.0);
+            gl.uniform4f(loc, value.r, value.g, value.b, value.a);
         } else if (value instanceof V3) {
-            gl.uniform3f(loc, value.x, value.y, value.z);
+            gl.uniform4f(loc, value.x, value.y, value.z, 0.0);
         }
     }
 

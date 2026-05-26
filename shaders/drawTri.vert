@@ -1,13 +1,15 @@
-attribute vec4 aPos;
-attribute vec2 aUV;
-attribute vec4 aCol;
-attribute float aType;
-attribute float aRadius;
+#version 300 es
 
-varying vec2 vUV;
-varying vec4 vCol;
-varying float vType;
-varying float vRadius;
+in vec4 aPos;
+in vec2 aUV;
+in vec4 aCol;
+in float aType;
+in float aRadius;
+
+out vec2 vUV;
+out vec4 vCol;
+out float vType;
+out float vRadius;
 
 void main() {
     vUV = aUV;

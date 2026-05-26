@@ -6,21 +6,18 @@ libs/manager objs:
 */
 
 import V3 from "./libs/V3.js";
-import Renderer from "./libs/Renderer.js"
+import WebGLRenderer from "./libs/WebGLRenderer.js";
 import InputManager from "./libs/InputManager.js";
 import EntityManager from "./libs/EntityManager.js";
+import Counter from "./libs/Counter.js";
+
 import Player from "./examples/SimplePlayer.js";
 import Turret from "./examples/SimpleTurret.js";
-import Counter from "./libs/Counter.js";
 import HomingBullet from "./examples/HomingBullet.js";
-import GLRenderer from "./libs/ShaderManager.js";
-import Color from "./libs/Color.js";
-import ShaderManager from "./libs/ShaderManager.js";
-import WebGLRenderer from "./libs/WebGLRenderer.js";
 
 console.log('Hello, world!');
 
-let webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080).scale(0.75));
+let webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080).scale(0.5));
 await webGLRenderer.load();
 
 let inputManager = new InputManager('canvas');
@@ -28,17 +25,10 @@ let entityManager = new EntityManager(webGLRenderer,inputManager);
 let frameCounter = new Counter(0);
 
 let player = new Player();
+let turret = new Turret().setPosition(new V3(250,100));
+let turret2 = new Turret().setPosition(new V3(550,300)).setBulletType(HomingBullet);
 
-let turret = new Turret();
-turret.setPosition(new V3(250,100));
-
-let turret2 = new Turret();
-turret2.setPosition(new V3(550,300));
-turret.setBulletType(HomingBullet);
-
-entityManager.addEntity(turret);
-entityManager.addEntity(turret2);
-entityManager.addEntity(player);
+entityManager.addEntities([turret,turret2,player]);
 
 let ms = 0;
 
@@ -64,3 +54,4 @@ setInterval(()=>{
 // Persio Quests:
 // - Shader pra recortar um layer da mesh 3d e mostrar o 'interior'
 // - Tesselation
+// - Shader node editor

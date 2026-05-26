@@ -63,19 +63,16 @@ export default class WebGLRenderer {
     //Shader Loading
     
     async load() {
-        
         await this.loadDrawTriShader();
-
-
-        this.setImageBuffer();
+        this.setReadBuffer();
+        this.setWriteTexture();
 
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
         
-        await this.loadShaders();        
+        await this.loadShaders();
     }
     async loadShaders() {
-        const shaderNames = ['blit','crt','tint','fisheye','chromaberration','wave','invert', 'offset'];
         const shaderParams = {
             'blit': {},
             'crt': {
@@ -88,7 +85,7 @@ export default class WebGLRenderer {
                 subColor: Color.white
             },
             'fisheye': {
-                warp: 0.25
+                strength: 0.25
             },
             'chromaberration': {
                 offset : 0.004
@@ -100,53 +97,24 @@ export default class WebGLRenderer {
             },
             'offset': {
                 offset : new V3(0,0.001,0)
+            },
+            'perlin': {
+                octaves: 12,
+                offset: new V3(0,0),
+                scale: new V3(1,1)
+            },
+            'radialWave': {
+                uPos: this.size.scale(0.5),
+                uRadius: 5
             }
         }
         const shaders = await Promise.all(
-            shaderNames.map(async (name)=>{
-                let shader = await Shader.load(this.gl,name, shaderParams[name]);
+            Object.entries(shaderParams).map(async ([key,value])=>{
+                let shader = await Shader.load(this.gl,key, value);
                 return shader;
             })
         )
         shaders.forEach((shader)=>{this.shaders[shader.name] = shader});
-    }
-    setImageBuffer(data) {
-        const gl = this.gl;
-
-        this.readTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 1);
-        gl.bindTexture(gl.TEXTURE_2D, this.readTexture);
-        
-        // texture params
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.RGBA,
-            this.size.x,
-            this.size.y,
-            0,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            null
-        );
-
-        this.readBuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.readBuffer);
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,
-            gl.COLOR_ATTACHMENT0,
-            gl.TEXTURE_2D,
-            this.readTexture,
-            0
-        );
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.bindTexture(gl.TEXTURE_2D, null);
     }
     async loadDrawTriShader() {
         const gl = this.gl;
@@ -221,18 +189,43 @@ export default class WebGLRenderer {
         let data = await response.text();
         return data;
     }
-    addVertexAttribute(program,name,size,offset) {
-        const aAtribLoc = this.gl.getAttribLocation(program, name);
-        this.gl.vertexAttribPointer(
-            aAtribLoc,                     // memory address? idk
-            size,                       // read this many values per vertex
-            this.gl.FLOAT,              // values are floats (4 bytes each)
-            false,                      // dont normalize
-            4 * this.vertexDataSize,    // each vertex occupies this size, in bytes
-            4 * offset                  // for each vertex, start reading at this byte
+    setReadBuffer(data) {
+        const gl = this.gl;
+
+        this.readTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 1);
+        gl.bindTexture(gl.TEXTURE_2D, this.readTexture);
+        
+        // texture params
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            this.size.x,
+            this.size.y,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null
         );
-        this.gl.enableVertexAttribArray(aAtribLoc);
-        return aAtribLoc;
+
+        this.readBuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.readBuffer);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            this.readTexture,
+            0
+        );
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
     }
     setWriteTexture() {
         const gl = this.gl;
@@ -268,6 +261,19 @@ export default class WebGLRenderer {
             this.writeTexture,
             0
         );
+    }
+    addVertexAttribute(program,name,size,offset) {
+        const aAtribLoc = this.gl.getAttribLocation(program, name);
+        this.gl.vertexAttribPointer(
+            aAtribLoc,                     // memory address? idk
+            size,                       // read this many values per vertex
+            this.gl.FLOAT,              // values are floats (4 bytes each)
+            false,                      // dont normalize
+            4 * this.vertexDataSize,    // each vertex occupies this size, in bytes
+            4 * offset                  // for each vertex, start reading at this byte
+        );
+        this.gl.enableVertexAttribArray(aAtribLoc);
+        return aAtribLoc;
     }
 
     // Drawing
@@ -395,10 +401,10 @@ export default class WebGLRenderer {
         //assume p1 is the initial tip, of UV [0,0]
         let points = [p1,p2,p3,p4];
         let UVs = [
-            new V3(0,1),
             new V3(0,0),
-            new V3(1,0),
-            new V3(1,1)
+            new V3(0,1),
+            new V3(1,1),
+            new V3(1,0)
         ]
         let topTriIndexes = [0,1,2];
         let bottomTriIndexes = [3,0,2];
@@ -483,11 +489,8 @@ export default class WebGLRenderer {
     draw() {
         const gl = this.gl;
 
-
         let vertexCount = this.vertexBuffer.length / this.vertexDataSize;
         
-        this.setWriteTexture();
-
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeBuffer);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -503,19 +506,22 @@ export default class WebGLRenderer {
     }
     postProcess(frame) {
         let chromaWarp = (Math.sin(frame / 30)) * 0.002;
-        let off = 0.001 * (frame % 15);
+        //let off = 0.001 * (frame % 15);
         //let waveOffset = frame / 30 + Math.sin(frame / 50) + 1;
 
+        this.runShader('tint',{tintColor: Color.white.scale(0.3)})
         this.runShader('chromaberration',{offset: chromaWarp});
-        this.runShader('crt');
-        this.runShader('offset',{offset: new V3(off,0,0)});
-
-        //this.runShader('fisheye');
-        //this.runShader('wave',{
-        //    strength: 0.01,
-        //    offset: waveOffset,
-        //    frequency: 50.0
+        this.runShader('crt', {stripWidth: 2});
+        //this.runShader('radialWave',{
+        //    uPos: new V3(2 * frame,this.size.y / 4).div(this.size),
+        //    uRadius: 0.1 + 0.2 * (1 + Math.sin((10 + frame) / 230)),
+        //    uWidth: 40 / this.size.y
         //});
+        this.runShader('perlin',{
+            offset: new V3(frame, 0).div(this.size),
+            scale: new V3(2,2),
+            octaves: 8
+        })
 
         this.shaderExecutionBuffer.forEach((exec)=>{
             this.runShader(exec.name,exec.params);
@@ -533,6 +539,7 @@ export default class WebGLRenderer {
     runShader(name, params = {}, isFinal = false) {
         /** @type {Shader} */
         const shader = this.shaders[name];
+        params.uResolution = this.size;
         shader.run(this.readTexture, isFinal ? null : this.writeBuffer, params);
         
         [this.readBuffer, this.writeBuffer] = [this.writeBuffer, this.readBuffer];

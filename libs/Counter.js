@@ -10,8 +10,8 @@ export default class Counter {
     count(n = 1) {
         this.currValue += n;
     }
-    reset() {
-        this.currValue = this.initValue;
+    reset(value = this.initValue) {
+        this.currValue = value;
     }
     over() {
         return this.currValue > this.maxValue;

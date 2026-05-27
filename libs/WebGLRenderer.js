@@ -37,10 +37,16 @@ export default class WebGLRenderer {
     writeBuffer;
     /** @type {WebGLFramebuffer} */
     readBuffer;
+
     /** @type {WebGLTexture} */
     writeTexture;
     /** @type {WebGLTexture} */
     readTexture;
+
+    /** @type {Object.<String,Texture>} */
+    textureBuffers = {};
+    /** @type {Texture} */
+    swapBuffer;
 
     /**
      * @param {String} canvasId 
@@ -54,8 +60,6 @@ export default class WebGLRenderer {
         this.canvas.height = size.y;
 
         this.gl = this.canvas.getContext('webgl2', {alpha: true});
-
-        this.shaderManager = new ShaderManager(this.gl,size);
     }
 
     get size() {return this.size.copy() }
@@ -64,8 +68,10 @@ export default class WebGLRenderer {
     
     async load() {
         await this.loadDrawTriShader();
-        this.setReadBuffer();
-        this.setWriteTexture();
+
+        this.readTextureObj =  new Texture(this.gl,this.size,'uTexture',0);
+        this.writeTextureObj = new Texture(this.gl,this.size,'output',1);
+        this.swapBuffer = new Texture(this.gl,this.size,'uBuffer',2);
 
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
@@ -95,9 +101,6 @@ export default class WebGLRenderer {
                 offset : 0.004,
                 frequency: 111
             },
-            'offset': {
-                offset : new V3(0,0.001,0)
-            },
             'perlin': {
                 octaves: 12,
                 offset: new V3(0,0),
@@ -106,7 +109,17 @@ export default class WebGLRenderer {
             'radialWave': {
                 uPos: this.size.scale(0.5),
                 uRadius: 5
-            }
+            },
+            'mist': {
+                uPerlin: this.textureBuffers[1],
+                strength: 1.0
+            },
+            'displace': {
+                strength: 0.005,
+                offset: new V3(0,0.01,0)
+            },
+            'edge': {},
+            'blur': {}
         }
         const shaders = await Promise.all(
             Object.entries(shaderParams).map(async ([key,value])=>{
@@ -138,17 +151,6 @@ export default class WebGLRenderer {
 
         this.glVertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.glVertexBuffer);
-
-        //TODO: see if its needed
-        this.glTextureBuffer = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 0);
-        gl.bindTexture(gl.TEXTURE_2D, this.glTextureBuffer);
-        
-        // texture params
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
         const aPosLoc = this.addVertexAttribute(program,'aPos',4,0);
         const aColLoc = this.addVertexAttribute(program,'aCol',4,4);
@@ -189,78 +191,12 @@ export default class WebGLRenderer {
         let data = await response.text();
         return data;
     }
-    setReadBuffer(data) {
-        const gl = this.gl;
-
-        this.readTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 1);
-        gl.bindTexture(gl.TEXTURE_2D, this.readTexture);
+    pushTextureBuffer(name) {
+        const currLength = Object.keys(this.textureBuffers).length;
+        const texture = new Texture(this.gl,this.size,name,currLength + 3);//jump over read/write/swap buffers
+        this.textureBuffers[name] = texture;
         
-        // texture params
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.RGBA,
-            this.size.x,
-            this.size.y,
-            0,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            null
-        );
-
-        this.readBuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.readBuffer);
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,
-            gl.COLOR_ATTACHMENT0,
-            gl.TEXTURE_2D,
-            this.readTexture,
-            0
-        );
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-    }
-    setWriteTexture() {
-        const gl = this.gl;
-
-        this.writeTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 2);
-        gl.bindTexture(gl.TEXTURE_2D, this.writeTexture);
-
-        gl.texImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.RGBA,
-            this.size.x,
-            this.size.y,
-            0,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            null
-        );
-
-        // texture params
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-        this.writeBuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeBuffer);
-        gl.framebufferTexture2D(
-            gl.FRAMEBUFFER,
-            gl.COLOR_ATTACHMENT0,
-            gl.TEXTURE_2D,
-            this.writeTexture,
-            0
-        );
+        return texture;
     }
     addVertexAttribute(program,name,size,offset) {
         const aAtribLoc = this.gl.getAttribLocation(program, name);
@@ -491,7 +427,7 @@ export default class WebGLRenderer {
 
         let vertexCount = this.vertexBuffer.length / this.vertexDataSize;
         
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeBuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeTextureObj.buffer);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         gl.useProgram(this.programs.drawTri);
@@ -501,22 +437,58 @@ export default class WebGLRenderer {
         this.sendVertexBuffer(this.programs.drawTri);
         gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
 
-        [this.readBuffer, this.writeBuffer] = [this.writeBuffer, this.readBuffer];
-        [this.readTexture, this.writeTexture] = [this.writeTexture, this.readTexture];
+        [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
         let chromaWarp = (Math.sin(frame / 30)) * 0.002;
-        //let off = 0.001 * (frame % 15);
-        //let waveOffset = frame / 30 + Math.sin(frame / 50) + 1;
 
-        this.runShader('tint',{tintColor: Color.white.scale(0.3)})
-        this.runShader('chromaberration',{offset: chromaWarp});
-        this.runShader('crt', {stripWidth: 2});
-        this.runShader('perlin',{
-            offset: new V3(frame, 0).div(this.size),
-            scale: new V3(2,2),
-            octaves: 12
-        })
+        //this.runShader('crt',{stripWidth:4});
+
+        let perlinBuffer = this.processToTexture('perlin',
+            {
+                offset: new V3(frame,0).div(this.size),
+                octaves: 5
+            }
+        );
+        
+        let tintBuffer = this.processToTexture('tint',
+            {
+                uTexture: perlinBuffer,
+                tintColor: new Color(0.1,0.3,0.9,1)
+            }
+        );
+
+        let edgeBuffer = this.processToTexture('edge',
+            {
+                uTexture: perlinBuffer,
+                uScale: 1
+            }
+        );
+
+        let blurBuffer = this.processToTexture('blur',
+            {
+                uTexture: edgeBuffer,
+                uKernelSize: 3
+            }
+        );
+        this.runShader('displace',
+            {
+                uDisplace: blurBuffer,
+                strength: 0.5 * Math.sin(frame / 40)
+            }
+        );
+
+        this.runShader('tint',
+            {
+                tintColor: Color.white.scale(0.1)
+            }
+        )
+        this.runShader('mist',
+            {
+                uPerlin: tintBuffer,
+                strength: 2.5
+            }
+        )
 
         this.shaderExecutionBuffer.forEach((exec)=>{
             this.runShader(exec.name,exec.params);
@@ -524,6 +496,11 @@ export default class WebGLRenderer {
         this.shaderExecutionBuffer = [];
 
         this.runShader('blit',{},true);
+        
+        perlinBuffer.destroy();
+        tintBuffer.destroy();
+        edgeBuffer.destroy();
+        blurBuffer.destroy();
     }
     requestPostProcessing(shaderName,shaderParams) {
         this.shaderExecutionBuffer.push({
@@ -534,11 +511,24 @@ export default class WebGLRenderer {
     runShader(name, params = {}, isFinal = false) {
         /** @type {Shader} */
         const shader = this.shaders[name];
+        if(shader===undefined) {
+            console.log(`Shader ${name} not found.`);
+            return;
+        }
+
         params.uResolution = this.size;
-        shader.run(this.readTexture, isFinal ? null : this.writeBuffer, params);
+        shader.run(this.readTextureObj.texture, isFinal ? null : this.writeTextureObj.buffer, params);
         
-        [this.readBuffer, this.writeBuffer] = [this.writeBuffer, this.readBuffer];
-        [this.readTexture, this.writeTexture] = [this.writeTexture, this.readTexture];
+        [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
+    }
+    processToTexture(shaderName, params = {}) {
+        let output = new Texture(this.gl,this.size,0);
+        
+        /** @type {Shader} */
+        const shader = this.shaders[shaderName];
+        params.uResolution = this.size;
+        shader.run(this.swapBuffer.texture, output.buffer, params);
+        return output;
     }
 
     // Variables and helpers
@@ -559,5 +549,70 @@ export default class WebGLRenderer {
         let imageData = new ImageData(width,height);
         for(let i = 0; i < pixels.length; i++) imageData.data[i] = pixels[i];
         return imageData;
+    }
+}
+
+export class Texture {
+    /** @type {WebGL2RenderingContext} */
+    gl;
+    index;
+    /** @type {WebGLTexture} */
+    texture;
+    /** @type {WebGLFramebuffer} */
+    buffer;
+    constructor(gl, size, index) {
+        this.gl = gl;
+        this.size = size;
+        this.index = index;
+        
+        this.texture = gl.createTexture();
+        this.buffer = gl.createFramebuffer();
+
+        gl.activeTexture(gl.TEXTURE0 + index);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        
+        // texture params
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            size.x,
+            size.y,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null
+        );
+
+        this.buffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.buffer);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            this.texture,
+            0
+        );
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    bindToIndex(index) {
+        this.index = index;
+
+        this.gl.activeTexture(this.gl.TEXTURE0 + index);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+
+        return this;
+    }
+    destroy() {
+        this.gl.deleteTexture(this.texture);
+        this.gl.deleteFramebuffer(this.buffer);
     }
 }

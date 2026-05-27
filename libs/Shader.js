@@ -1,5 +1,6 @@
 import Color from "./Color.js";
 import V3 from "./V3.js";
+import { Texture } from "./WebGLRenderer.js";
 
 export default class Shader {
     /** @type {WebGL2RenderingContext} */
@@ -68,6 +69,13 @@ export default class Shader {
     // Private setup
     // -------------------------
 
+    _bindTexture(texture, name,index) {
+        const gl = this.gl;
+
+        gl.activeTexture(gl.TEXTURE0 + index);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(gl.getUniformLocation(this.program, name), index);
+    }
     _createProgram(vertSrc, fragSrc) {
         const gl = this.gl;
 
@@ -141,6 +149,10 @@ export default class Shader {
             gl.uniform4f(loc, value.r, value.g, value.b, value.a);
         } else if (value instanceof V3) {
             gl.uniform4f(loc, value.x, value.y, value.z, 0.0);
+        } else if (value instanceof Texture) {
+            gl.activeTexture(gl.TEXTURE0 + value.index);
+            gl.bindTexture(gl.TEXTURE_2D, value.texture);
+            gl.uniform1i(gl.getUniformLocation(this.program, name), value.index);
         }
     }
 

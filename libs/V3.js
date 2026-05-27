@@ -233,6 +233,16 @@ export default class V3 {
     /**
      * @returns {this}
      */
+    invert() {
+        return new this.constructor(
+            1/this.x,
+            1/this.y,
+            1/this.z
+        )
+    }
+    /**
+     * @returns {this}
+     */
     ceil() {
         return new this.constructor(
             Math.ceil(this.x),

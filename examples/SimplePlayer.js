@@ -107,7 +107,7 @@ export default class Player {
                 if(player.shootTimer.progress()<0) {
                     let off = 0.003 * Math.sin(player.shootTimer.progress() * 30);
                     player.renderer.requestPostProcessing(
-                        'offset',
+                        'displace',
                         {
                             offset: new V3(off,0,0)
                         }

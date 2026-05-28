@@ -30,7 +30,7 @@ const shaderParams = {
         octaves: 12,
         offset: new V3(0,0),
         scale: new V3(1,1),
-        strength: 1
+        uValueScale: 1
     },
     'radialWave': {
         uPos: new V3(0.5,0.5),
@@ -54,7 +54,8 @@ const shaderParams = {
     },
     'mergeTexture': {
         uLerp: 1
-    }
+    },
+    'hsl': {}
 }
 
 export default class WebGLRenderer {
@@ -442,8 +443,9 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
-        this.applyWaterDistortion(frame);
-        
+        this.applyPsychodelicDistortion(frame,0.1);
+        //this.applyWaterDistortion(frame);
+
         this.shaderExecutionBuffer.forEach((exec)=>{
             this.runShader(exec.name,exec.params);
         })
@@ -508,7 +510,7 @@ export default class WebGLRenderer {
         let perlinBuffer = this.processToTexture('perlin',{
             offset: new V3(frame,0).div(this.size),
             octaves: octaves,
-            strength: 1
+            uValueScale: 1
         });
         let edgeBuffer = this.processToTexture('edge',{
             uTexture: perlinBuffer,
@@ -525,7 +527,7 @@ export default class WebGLRenderer {
             offset: new V3(frame / 2,frame).div(this.size),
             scale: new V3(1.5,1.5).invert(),
             octaves: octaves - 1,
-            strength: 12
+            uValueScale: 12
         });
 
         let edgeBuffer2 = this.processToTexture('edge',{
@@ -588,6 +590,37 @@ export default class WebGLRenderer {
         this.runShader('blit',{
             uTexture: this.readTextureObj
         });
+    }
+    applyPsychodelicDistortion(frame,strength = 0.01, opacity = 0.1) {
+        let perlin = this.processToTexture('perlin',{
+            offset: V3.zero,
+            octaves: 4,
+            uValueScale: 4,
+            uValueOffset: frame / 240
+        });
+        let tuneChannels = this.processToTexture('tint',{
+            uTexture: perlin.bindToIndex(3),
+            uScale: new Color(1,0,0),
+            uOffset: new Color(0,1,0.5)
+        });
+        let hsl = this.processToTexture('hsl',{
+            uTexture: tuneChannels.bindToIndex(3)
+        })
+        this.runShader('tint',{
+            uOffset: Color.white.scale(opacity)
+        });
+
+        this.runShader('displace',{
+            uDisplace: perlin,
+            strength: strength
+        });
+        this.runShader('mist',{
+            uNoise: hsl.bindToIndex(3)
+        });
+
+        perlin.destroy();
+        tuneChannels.destroy();
+        hsl.destroy();
     }
 }
 

@@ -42,6 +42,14 @@ export default class Color extends V3 {
             ')'
         )
     }
+    // https://labex.io/tutorials/javascript-hsl-to-rgb-conversion-28378
+    static HSLToRGB(h, s, l) {
+        const k = (n) => (n + h / 30) % 12;
+        const a = s * Math.min(l, 1 - l);
+        const f = (n) =>
+            l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+        return new Color(f(0),f(8),f(4));
+    }
     invert() {
         return new Color(
             1 - this.r,

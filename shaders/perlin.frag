@@ -6,7 +6,8 @@ uniform sampler2D uTexture;
 uniform vec4 offset;
 uniform vec4 scale;
 uniform float octaves;
-uniform float strength;
+uniform float uValueScale;
+uniform float uValueOffset;
 
 in vec2 vUV;
 out vec4 fragColor;
@@ -100,7 +101,7 @@ void main() {
         offset
     );
     float map = (val + 1.0) / 2.0;
-    map = fract(map * strength);
+    map = fract(map * uValueScale + uValueOffset);
     
     vec4 final = vec4(vec3(map), 1.0);
     fragColor = final;

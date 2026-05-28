@@ -15,7 +15,10 @@ void main() {
     vec4 noise = texture(uDisplace,vUV);
     vec2 shift = vec2((noise + offset) * strength);
     
-    vec4 final = texture(uTexture,vUV + shift);
+    vec4 pixel = texture(uTexture,vUV + shift);
+    vec4 waterSpot = pixel * (1.0 + length(shift));//mix(pixel,vec4(1.0),length(shift));
+
+    vec4 final = pixel;
 
     fragColor = final;
 }

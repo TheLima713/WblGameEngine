@@ -3,6 +3,60 @@ import Shader from "./Shader.js";
 import ShaderManager from "./ShaderManager.js";
 import V3 from "./V3.js";
 
+const shaderParams = {
+    'blit': {},
+    'crt': {
+        stripWidth: 2
+    },
+    'tint': {
+        uScale: Color.white,
+        uOffset: Color.black
+    },
+    'invert': {
+        subColor: Color.white
+    },
+    'fisheye': {
+        strength: 0.25
+    },
+    'chromaberration': {
+        offset : 0.004
+    },
+    'wave': {
+        strength: 0.01,
+        offset : 0.004,
+        frequency: 111
+    },
+    'perlin': {
+        octaves: 12,
+        offset: new V3(0,0),
+        scale: new V3(1,1),
+        strength: 1
+    },
+    'radialWave': {
+        uPos: new V3(0.5,0.5),
+        uRadius: 5
+    },
+    'mist': {
+        strength: 1.0
+    },
+    'displace': {
+        strength: 0.005,
+        offset: new V3(0,0.01,0)
+    },
+    'edge': {
+        strength: 1
+    },
+    'blur': {
+        uKernelSize: 1
+    },
+    'colorScale': {
+        uColor: Color.white
+    },
+    'mergeTexture': {
+        uLerp: 1
+    }
+}
+
 export default class WebGLRenderer {
     size = new V3(0,0);
     offset = new V3(0,0);
@@ -32,17 +86,6 @@ export default class WebGLRenderer {
         'quad':1,
         'circle':2
     }
-
-    /** @type {WebGLFramebuffer} */
-    writeBuffer;
-    /** @type {WebGLFramebuffer} */
-    readBuffer;
-
-    /** @type {WebGLTexture} */
-    writeTexture;
-    /** @type {WebGLTexture} */
-    readTexture;
-
     /** @type {Object.<String,Texture>} */
     textureBuffers = {};
     /** @type {Texture} */
@@ -79,48 +122,6 @@ export default class WebGLRenderer {
         await this.loadShaders();
     }
     async loadShaders() {
-        const shaderParams = {
-            'blit': {},
-            'crt': {
-                stripWidth: 2
-            },
-            'tint': {
-                tintColor: new Color(0.0,0.0,0.1,0.05)
-            },
-            'invert': {
-                subColor: Color.white
-            },
-            'fisheye': {
-                strength: 0.25
-            },
-            'chromaberration': {
-                offset : 0.004
-            },
-            'wave': {
-                strength: 0.01,
-                offset : 0.004,
-                frequency: 111
-            },
-            'perlin': {
-                octaves: 12,
-                offset: new V3(0,0),
-                scale: new V3(1,1)
-            },
-            'radialWave': {
-                uPos: this.size.scale(0.5),
-                uRadius: 5
-            },
-            'mist': {
-                uPerlin: this.textureBuffers[1],
-                strength: 1.0
-            },
-            'displace': {
-                strength: 0.005,
-                offset: new V3(0,0.01,0)
-            },
-            'edge': {},
-            'blur': {}
-        }
         const shaders = await Promise.all(
             Object.entries(shaderParams).map(async ([key,value])=>{
                 let shader = await Shader.load(this.gl,key, value);
@@ -192,6 +193,7 @@ export default class WebGLRenderer {
         return data;
     }
     pushTextureBuffer(name) {
+        if(this.textureBuffers[name]) this.textureBuffers[name].destroy();
         const currLength = Object.keys(this.textureBuffers).length;
         const texture = new Texture(this.gl,this.size,name,currLength + 3);//jump over read/write/swap buffers
         this.textureBuffers[name] = texture;
@@ -440,67 +442,13 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
-        let chromaWarp = (Math.sin(frame / 30)) * 0.002;
-
-        //this.runShader('crt',{stripWidth:4});
-
-        let perlinBuffer = this.processToTexture('perlin',
-            {
-                offset: new V3(frame,0).div(this.size),
-                octaves: 5
-            }
-        );
+        this.applyWaterDistortion(frame);
         
-        let tintBuffer = this.processToTexture('tint',
-            {
-                uTexture: perlinBuffer,
-                tintColor: new Color(0.1,0.3,0.9,1)
-            }
-        );
-
-        let edgeBuffer = this.processToTexture('edge',
-            {
-                uTexture: perlinBuffer,
-                uScale: 1
-            }
-        );
-
-        let blurBuffer = this.processToTexture('blur',
-            {
-                uTexture: edgeBuffer,
-                uKernelSize: 3
-            }
-        );
-        this.runShader('displace',
-            {
-                uDisplace: blurBuffer,
-                strength: 0.5 * Math.sin(frame / 40)
-            }
-        );
-
-        this.runShader('tint',
-            {
-                tintColor: Color.white.scale(0.1)
-            }
-        )
-        this.runShader('mist',
-            {
-                uPerlin: tintBuffer,
-                strength: 2.5
-            }
-        )
-
         this.shaderExecutionBuffer.forEach((exec)=>{
             this.runShader(exec.name,exec.params);
         })
         this.shaderExecutionBuffer = [];
-
         this.runShader('blit',{},true);
-        
-        perlinBuffer.destroy();
-        tintBuffer.destroy();
-        edgeBuffer.destroy();
-        blurBuffer.destroy();
     }
     requestPostProcessing(shaderName,shaderParams) {
         this.shaderExecutionBuffer.push({
@@ -550,6 +498,97 @@ export default class WebGLRenderer {
         for(let i = 0; i < pixels.length; i++) imageData.data[i] = pixels[i];
         return imageData;
     }
+
+    // Custom shader sequences
+    applyWaterDistortion(frame) {
+        const octaves = 4;
+        const waterColor = new Color(0.1,0.3,0.8);
+        // Wave shader
+            // 1. Displacement through Perlin gradient map
+        let perlinBuffer = this.processToTexture('perlin',{
+            offset: new V3(frame,0).div(this.size),
+            octaves: octaves,
+            strength: 1
+        });
+        let edgeBuffer = this.processToTexture('edge',{
+            uTexture: perlinBuffer,
+            strength: 12
+        });
+        let blurBuffer = this.processToTexture('blur',{
+            uTexture: edgeBuffer,
+            uKernelSize: 5
+        });
+        edgeBuffer.destroy();
+
+            // 2. Wave edge through looping Perlin edge
+        let perlinBuffer2 = this.processToTexture('perlin',{
+            offset: new V3(frame / 2,frame).div(this.size),
+            scale: new V3(1.5,1.5).invert(),
+            octaves: octaves - 1,
+            strength: 12
+        });
+
+        let edgeBuffer2 = this.processToTexture('edge',{
+            uTexture: perlinBuffer2,
+            strength: 1
+        });
+        perlinBuffer2.destroy();
+
+        let blurBuffer2 = this.processToTexture('blur',{
+            uTexture: edgeBuffer2,
+            uKernelSize: 2
+        });
+        edgeBuffer2.destroy();
+
+        let scaleBuffer2 = this.processToTexture('colorScale',{
+            uTexture: blurBuffer2,
+            uColor: Color.white.scale(2)
+        });
+        blurBuffer2.destroy();
+
+        let dummyBuffer = this.processToTexture('tint',{
+            uOffset: Color.white
+        });
+
+        // 3. Unify
+
+        let tintBuffer = this.processToTexture('tint',{
+            uTexture: perlinBuffer,
+            uScale: Color.white,
+            uOffset: waterColor
+        });
+        perlinBuffer.destroy();
+
+        this.runShader('tint',{
+            uScale: Color.white,
+            uOffset: Color.white.scale(0.1)
+        });
+
+        this.runShader('mist',{
+            uNoise: tintBuffer.bindToIndex(4),
+            strength: 2 
+        });
+        tintBuffer.destroy();
+        
+        this.runShader('mergeTexture',{
+            uTexture: this.readTextureObj,
+            uScale: dummyBuffer.bindToIndex(3),
+            uOffset: scaleBuffer2.bindToIndex(4),
+            strength: 0.25
+        })
+        dummyBuffer.destroy();
+        scaleBuffer2.destroy();
+
+        this.runShader('displace',{
+            uDisplace: blurBuffer.bindToIndex(4),
+            strength: 0.25
+        });
+        blurBuffer.destroy();
+
+        this.runShader('blit',{
+            uTexture: this.readTextureObj
+        });
+    }
 }
 
 export class Texture {
@@ -560,6 +599,12 @@ export class Texture {
     texture;
     /** @type {WebGLFramebuffer} */
     buffer;
+    /**
+     * 
+     * @param {WebGL2RenderingContext} gl 
+     * @param {V3} size 
+     * @param {Number} index 
+     */
     constructor(gl, size, index) {
         this.gl = gl;
         this.size = size;

@@ -4,7 +4,7 @@ precision mediump float;
 
 uniform vec4 uResolution;
 uniform sampler2D uTexture;
-uniform float uScale;
+uniform float strength;
 
 in vec2 vUV;
 out vec4 fragColor;
@@ -46,7 +46,7 @@ void main() {
         }
     }
 
-    vec4 final = vec4(accum,0.0,1.0) * uScale;
+    vec4 final = vec4(accum,0.0,1.0) * strength;
 
     fragColor = final;
 }

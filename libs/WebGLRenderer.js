@@ -443,8 +443,8 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
-        this.applyPsychodelicDistortion(frame,0.1);
-        //this.applyWaterDistortion(frame);
+        //this.applyPsychodelicDistortion(frame,0.1);
+        this.applyWaterDistortion(frame);
 
         this.shaderExecutionBuffer.forEach((exec)=>{
             this.runShader(exec.name,exec.params);
@@ -520,13 +520,12 @@ export default class WebGLRenderer {
             uTexture: edgeBuffer,
             uKernelSize: 5
         });
-        edgeBuffer.destroy();
 
             // 2. Wave edge through looping Perlin edge
         let perlinBuffer2 = this.processToTexture('perlin',{
             offset: new V3(frame / 2,frame).div(this.size),
             scale: new V3(1.5,1.5).invert(),
-            octaves: octaves - 1,
+            octaves: octaves - 1,   
             uValueScale: 12
         });
 
@@ -534,19 +533,16 @@ export default class WebGLRenderer {
             uTexture: perlinBuffer2,
             strength: 1
         });
-        perlinBuffer2.destroy();
 
         let blurBuffer2 = this.processToTexture('blur',{
             uTexture: edgeBuffer2,
             uKernelSize: 2
         });
-        edgeBuffer2.destroy();
 
         let scaleBuffer2 = this.processToTexture('colorScale',{
             uTexture: blurBuffer2,
-            uColor: Color.white.scale(2)
+            uColor: Color.white.scale(1)
         });
-        blurBuffer2.destroy();
 
         let dummyBuffer = this.processToTexture('tint',{
             uOffset: Color.white
@@ -559,7 +555,6 @@ export default class WebGLRenderer {
             uScale: Color.white,
             uOffset: waterColor
         });
-        perlinBuffer.destroy();
 
         this.runShader('tint',{
             uScale: Color.white,
@@ -568,9 +563,8 @@ export default class WebGLRenderer {
 
         this.runShader('mist',{
             uNoise: tintBuffer.bindToIndex(4),
-            strength: 2 
+            strength: 1.5
         });
-        tintBuffer.destroy();
         
         this.runShader('mergeTexture',{
             uTexture: this.readTextureObj,
@@ -578,8 +572,6 @@ export default class WebGLRenderer {
             uOffset: scaleBuffer2.bindToIndex(4),
             strength: 0.25
         })
-        dummyBuffer.destroy();
-        scaleBuffer2.destroy();
 
         this.runShader('displace',{
             uDisplace: blurBuffer.bindToIndex(4),
@@ -590,6 +582,15 @@ export default class WebGLRenderer {
         this.runShader('blit',{
             uTexture: this.readTextureObj
         });
+        
+        edgeBuffer.destroy();
+        perlinBuffer2.destroy();
+        edgeBuffer2.destroy();
+        blurBuffer2.destroy();
+        perlinBuffer.destroy();
+        tintBuffer.destroy();
+        dummyBuffer.destroy();
+        scaleBuffer2.destroy();
     }
     applyPsychodelicDistortion(frame,strength = 0.01, opacity = 0.1) {
         let perlin = this.processToTexture('perlin',{

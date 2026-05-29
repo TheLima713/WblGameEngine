@@ -112,9 +112,9 @@ export default class WebGLRenderer {
     //Shader Loading
     
     async load() {
-        this.initTextureArray(new V3(512,512),4);
-        this.textureBuffers['doggo'] = await Texture.fromPath(this.gl,'./images/a-mimir.webp');
-        await this.pushImageToArray('./images/doggo.png',0);
+        this.initTextureArray(new V3(212,212),4);
+        this.textureBuffers['hurt-doggo'] = await Texture.fromPath(this.gl,'./images/doggo.png');
+        await this.pushImageToArray('./images/mimir.jpeg',0);
 
         await this.loadDrawTriShader();
 
@@ -567,34 +567,36 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
-        let wave = 0.5 * (1+Math.sin(frame / 40));
-
-        let fadeOut = this.processToTexture('tint',{
-            uOffset: Color.white.scale(wave)
-        });
-
-        let shifted = this.processToTexture('mergeTexture',{
-            uTexture: this.readTextureObj,
-            uScale: fadeOut.bindToIndex(5),
-            uOffset: this.textureBuffers['doggo'].bindToIndex(6),
-            strength: (1-wave)
-        })
-        this.runShader('blit',{
-            uTexture: shifted
-        })
-        fadeOut.destroy();
-        shifted.destroy();
+        //let wave = 0.5 * (1+Math.sin(frame / 40));
+//
+        //let fadeOut = this.processToTexture('tint',{
+        //    uOffset: Color.white.scale(wave)
+        //});
+//
+        //let shifted = this.processToTexture('mergeTexture',{
+        //    uTexture: this.readTextureObj,
+        //    uScale: fadeOut.bindToIndex(5),
+        //    uOffset: this.textureBuffers['doggo'].bindToIndex(6),
+        //    strength: (1-wave)
+        //})
+        //this.runShader('blit',{
+        //    uTexture: shifted
+        //})
+        //fadeOut.destroy();
+        //shifted.destroy();
 
         this.shaderExecutionBuffer.forEach((exec)=>{
-            this.runShader(exec.name,exec.params);
+            if(exec.function) exec.function();
+            else this.runShader(exec.name,exec.params);
         })
         this.shaderExecutionBuffer = [];
         this.runShader('blit',{},true);
     }
-    requestPostProcessing(shaderName,shaderParams) {
+    requestPostProcessing(shaderName,shaderParams, fn) {
         this.shaderExecutionBuffer.push({
             name: shaderName,
-            params: shaderParams
+            params: shaderParams,
+            function: fn
         });
     }
     runShader(name, params = {}, isFinal = false) {
@@ -770,7 +772,7 @@ export default class WebGLRenderer {
         tint.destroy();
     }
     doggoJumpscare(frame) {
-        let wave = 0.5 * (1+Math.sin(frame / 40));
+        let wave = (Math.sin(frame * 3.1415));
 
         let fadeOut = this.processToTexture('tint',{
             uOffset: Color.white.scale(wave)
@@ -779,7 +781,7 @@ export default class WebGLRenderer {
         let shifted = this.processToTexture('mergeTexture',{
             uTexture: this.readTextureObj,
             uScale: fadeOut.bindToIndex(3),
-            uOffset: this.textureBuffers['doggo'].bindToIndex(4),
+            uOffset: this.textureBuffers['hurt-doggo'].bindToIndex(4),
             strength: (1-wave)
         })
         this.runShader('blit',{

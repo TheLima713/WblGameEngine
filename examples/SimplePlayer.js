@@ -164,7 +164,11 @@ export default class Player {
 
                 player.draw(player.radius,freezingColor,shiverOffset);
 
-                player.renderer.requestPostProcessing('invert',{subColor: Color.white.scale(1-normTime)});
+                //player.renderer.requestPostProcessing('invert',{subColor: Color.white.scale(1-normTime)});
+
+                player.renderer.requestPostProcessing(null,{},()=>{
+                    player.renderer.doggoJumpscare(normTime);
+                });
             }
         });
         let dying = new State({

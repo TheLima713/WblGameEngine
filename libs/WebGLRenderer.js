@@ -81,16 +81,17 @@ export default class WebGLRenderer {
 
     // local vertex for the geometry points
     vertexBuffer = [];
-    vertexDataSize = 12;// x y z w u v r g b a R T
+    vertexDataSize = 14;// x y z w u v r g b a Rad Typ Emi Tex
     quadTypeIndexes = {
         'tri':0,
-        'quad':1,
+        'quad':3,//1,
         'circle':2
     }
     /** @type {Object.<String,Texture>} */
     textureBuffers = {};
     /** @type {Texture} */
     swapBuffer;
+    textureArrayBuffer;
 
     /**
      * @param {String} canvasId 
@@ -111,16 +112,28 @@ export default class WebGLRenderer {
     //Shader Loading
     
     async load() {
+        this.initTextureArray(new V3(512,512),4);
+        this.textureBuffers['doggo'] = await Texture.fromPath(this.gl,'./images/a-mimir.webp');
+        await this.pushImageToArray('./images/doggo.png',0);
+
         await this.loadDrawTriShader();
 
-        this.readTextureObj =  new Texture(this.gl,this.size,'uTexture',0);
-        this.writeTextureObj = new Texture(this.gl,this.size,'output',1);
-        this.swapBuffer = new Texture(this.gl,this.size,'uBuffer',2);
-
+        this.readTextureObj =  new Texture(this.gl,this.size,0);
+        this.writeTextureObj = new Texture(this.gl,this.size,1);
+        this.swapBuffer = new Texture(this.gl,this.size,2);
+        
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
         
         await this.loadShaders();
+    }
+    destroy() {
+        this.gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);//
+
+        this.readTextureObjswapBuffer.destroy();
+        this.writeTextureObjswapBuffer.destroy();
+        this.swapBuffer.destroy();
+        this.gl.deleteTexture(this.textureArrayBuffer);
     }
     async loadShaders() {
         const shaders = await Promise.all(
@@ -145,6 +158,7 @@ export default class WebGLRenderer {
         gl.attachShader(program, fragShader);
         
         gl.linkProgram(program);
+        gl.useProgram(program);
         
         this.drawVertexArray = gl.createVertexArray();
         gl.bindVertexArray(this.drawVertexArray);
@@ -154,33 +168,47 @@ export default class WebGLRenderer {
         this.glVertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.glVertexBuffer);
 
+        gl.activeTexture(gl.TEXTURE3);//
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.textureArrayBuffer);//
+        const uTextureArrayLoc = gl.getUniformLocation(program,'uTextureArray');//
+        gl.uniform1i(uTextureArrayLoc,3);//
+        
         const aPosLoc = this.addVertexAttribute(program,'aPos',4,0);
         const aColLoc = this.addVertexAttribute(program,'aCol',4,4);
         const aUVLoc = this.addVertexAttribute(program,'aUV',2,8);
         const aRadiusLoc = this.addVertexAttribute(program,'aRadius',1,10);
         const aTypeLoc = this.addVertexAttribute(program,'aType',1,11);
+        const aEmissionLoc = this.addVertexAttribute(program,'aEmission',1,12);
+        const aTextureIndexLoc = this.addVertexAttribute(program,'aTextureIndex',1,13);
         this.attributeLocations = [
             aPosLoc,
             aColLoc,
             aUVLoc,
             aRadiusLoc,
-            aTypeLoc
+            aTypeLoc,
+            aEmissionLoc,
+            aTextureIndexLoc
         ];
 
         this.programs.drawTri = program;
 
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);//
 
         gl.deleteShader(vertShader);
         gl.deleteShader(fragShader);
+        
+        gl.useProgram(null);
     }
     async compileShader(type,path) {
-        const shader = this.gl.createShader(type);
-        const source = await this.getShaderSource(path);
+        const gl = this.gl;
 
-        this.gl.shaderSource(shader, source);
-        this.gl.compileShader(shader);
+        const shader = gl.createShader(type);
+        const source = await this.getShaderSource(path);
+        
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
 
         return shader;
     }
@@ -213,6 +241,77 @@ export default class WebGLRenderer {
         );
         this.gl.enableVertexAttribArray(aAtribLoc);
         return aAtribLoc;
+    }
+    initTextureArray(size, length = 4) {
+        const gl = this.gl;
+        this.textureArraySize = size;
+
+        this.textureArrayBuffer = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE3);//
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.textureArrayBuffer);
+        
+        gl.texImage3D(
+            gl.TEXTURE_2D_ARRAY,
+
+            0,
+
+            gl.RGBA8,
+
+            size.x,
+            size.y,
+            length,
+
+            0,
+
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+
+            null
+        );
+
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY,null);
+    }
+    async pushImageToArray(path,index) {
+        const gl = this.gl;
+
+        const imageData = await new Promise((resolve,reject)=>{
+            const image = new Image();
+            image.onload = () => {
+                resolve(image);
+            };
+            image.src = path;
+        })
+        const size = new V3(imageData.width,imageData.height);
+
+        if(!size.equals(this.textureArraySize)) {
+            console.log(`Image is of wrong size [${size.x + ',' + size.y}], required: (${this.textureArraySize.x + ',' + this.textureArraySize.y})`);
+            return;
+        }
+
+        gl.activeTexture(gl.TEXTURE3);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.textureArrayBuffer);
+        
+        gl.texSubImage3D(
+            gl.TEXTURE_2D_ARRAY,
+
+            0,
+
+            0,0,index,
+
+            this.textureArraySize.x,
+            this.textureArraySize.y,
+            1,
+
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+
+            imageData
+        );
+
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
     }
 
     // Drawing
@@ -261,13 +360,35 @@ export default class WebGLRenderer {
      * @param {Number} radius 
      * @param {Color} color 
      */
-    fillCircle(center,radius,color = Color.white) {
+    fillCircle(center,radius,color = Color.white, textureIndex = -1) {
         let p1 = center.add(new V3(radius,-radius));
         let p2 = center.add(new V3(-radius,-radius));
         let p3 = center.add(new V3(-radius,radius));
         let p4 = center.add(new V3(radius,radius));
 
-        this.pushQuadToBuffer(p1,p2,p3,p4,'circle',color);
+        this.pushQuadToBuffer(p2,p3,p4,p1,'circle',color, textureIndex);
+    }
+    /**
+     * 
+     * @param {V3} center 
+     * @param {V3} radius 
+     * @param {Color} color 
+     */
+    fillAimedCircle(center,radius,color = Color.white, textureIndex = -1) {
+        let diagonal = radius.add(new V3(-radius.y,radius.x));
+        let diagonal90 = new V3(-diagonal.y,diagonal.x);
+
+        let p1 = center.add(diagonal90);
+        let p2 = center.add(diagonal);
+        let p3 = center.sub(diagonal90);
+        let p4 = center.sub(diagonal);
+
+        this.pushQuadToBuffer(
+            p1,p2,p3,p4,
+            'circle',
+            color,
+            textureIndex
+        );
     }
     /**
      * 
@@ -277,18 +398,15 @@ export default class WebGLRenderer {
      * @param {V3} p4 
      * @param {Color} color 
      */
-    fillTriangle(p1,p2,p3,color = Color.white) {
-        this.pushQuadToBuffer(p1,p2,p3,V3.zero,'tri',color);
+    fillTriangle(p1,p2,p3,color = Color.white, textureIndex = -1) {
+        this.pushQuadToBuffer(p1,p2,p3,V3.zero,'tri',color,textureIndex);
     }
     /**
-     * 
-     * @param {V3} p1 
-     * @param {V3} p2 
-     * @param {V3} p3 
-     * @param {V3} p4 
+     * @param {V3} point 
+     * @param {V3} size 
      * @param {Color} color 
      */
-    fillRect(point,size,color = Color.white) {
+    fillRect(point,size,color = Color.white, textureIndex = -1) {
         let start = point;
         let end = point.add(size);
 
@@ -298,7 +416,8 @@ export default class WebGLRenderer {
             new V3(end.x,start.y),
             end,
             'tri',
-            color
+            color,
+            textureIndex
         );
     }
     /**
@@ -308,7 +427,7 @@ export default class WebGLRenderer {
      * @param {V3} direction 
      * @param {Color} color 
      */
-    fillAimedRect(center,size,direction,color = Color.white) {
+    fillAimedRect(center,size,direction,color = Color.white, textureIndex = -1) {
         direction = direction.normalized();
         let heightDir = direction.scale(size.y);
 
@@ -323,7 +442,8 @@ export default class WebGLRenderer {
         this.pushQuadToBuffer(
             p1,p2,p3,p4,
             'quad',
-            color
+            color,
+            textureIndex
         );
     }
     /**
@@ -334,9 +454,8 @@ export default class WebGLRenderer {
      * @param {V3} p4 
      * @param {Color} color 
      */
-    pushQuadToBuffer(p1,p2,p3,p4,type,color = Color.white) {
-        let cornerRadius = 0.0;
-        let typeIndex = this.quadTypeIndexes[type];
+    pushQuadToBuffer(p1,p2,p3,p4,type,color = Color.white, textureIndex = -1, emission = 0.0, cornerRadius = 0.0) {
+        const typeIndex = this.quadTypeIndexes[type];
         //assume p1 is the initial tip, of UV [0,0]
         let points = [p1,p2,p3,p4];
         let UVs = [
@@ -378,7 +497,9 @@ export default class WebGLRenderer {
                 point.u,
                 point.v,
                 cornerRadius,
-                typeIndex
+                typeIndex,
+                emission,
+                textureIndex
             ];
         });
 
@@ -430,6 +551,9 @@ export default class WebGLRenderer {
 
         let vertexCount = this.vertexBuffer.length / this.vertexDataSize;
         
+        gl.activeTexture(gl.TEXTURE3);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.textureArrayBuffer);
+        
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeTextureObj.buffer);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -443,8 +567,23 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
-        //this.applyPsychodelicDistortion(frame,0.1);
-        this.applyWaterDistortion(frame);
+        let wave = 0.5 * (1+Math.sin(frame / 40));
+
+        let fadeOut = this.processToTexture('tint',{
+            uOffset: Color.white.scale(wave)
+        });
+
+        let shifted = this.processToTexture('mergeTexture',{
+            uTexture: this.readTextureObj,
+            uScale: fadeOut.bindToIndex(5),
+            uOffset: this.textureBuffers['doggo'].bindToIndex(6),
+            strength: (1-wave)
+        })
+        this.runShader('blit',{
+            uTexture: shifted
+        })
+        fadeOut.destroy();
+        shifted.destroy();
 
         this.shaderExecutionBuffer.forEach((exec)=>{
             this.runShader(exec.name,exec.params);
@@ -502,9 +641,8 @@ export default class WebGLRenderer {
     }
 
     // Custom shader sequences
-    applyWaterDistortion(frame) {
-        const octaves = 4;
-        const waterColor = new Color(0.1,0.3,0.8);
+    applyWaterDistortion(frame,octaves = 3,strength = 0.01, color = new Color(0.1,0.3,0.8)) {
+        const waterColor = color;
         // Wave shader
             // 1. Displacement through Perlin gradient map
         let perlinBuffer = this.processToTexture('perlin',{
@@ -513,11 +651,11 @@ export default class WebGLRenderer {
             uValueScale: 1
         });
         let edgeBuffer = this.processToTexture('edge',{
-            uTexture: perlinBuffer,
+            uTexture: perlinBuffer.bindToIndex(3),
             strength: 12
         });
         let blurBuffer = this.processToTexture('blur',{
-            uTexture: edgeBuffer,
+            uTexture: edgeBuffer.bindToIndex(3),
             uKernelSize: 5
         });
 
@@ -525,22 +663,22 @@ export default class WebGLRenderer {
         let perlinBuffer2 = this.processToTexture('perlin',{
             offset: new V3(frame / 2,frame).div(this.size),
             scale: new V3(1.5,1.5).invert(),
-            octaves: octaves - 1,   
+            octaves: octaves,
             uValueScale: 12
         });
 
         let edgeBuffer2 = this.processToTexture('edge',{
-            uTexture: perlinBuffer2,
+            uTexture: perlinBuffer2.bindToIndex(3),
             strength: 1
         });
 
         let blurBuffer2 = this.processToTexture('blur',{
-            uTexture: edgeBuffer2,
+            uTexture: edgeBuffer2.bindToIndex(3),
             uKernelSize: 2
         });
 
         let scaleBuffer2 = this.processToTexture('colorScale',{
-            uTexture: blurBuffer2,
+            uTexture: blurBuffer2.bindToIndex(3),
             uColor: Color.white.scale(1)
         });
 
@@ -551,7 +689,7 @@ export default class WebGLRenderer {
         // 3. Unify
 
         let tintBuffer = this.processToTexture('tint',{
-            uTexture: perlinBuffer,
+            uTexture: perlinBuffer.bindToIndex(3),
             uScale: Color.white,
             uOffset: waterColor
         });
@@ -575,7 +713,7 @@ export default class WebGLRenderer {
 
         this.runShader('displace',{
             uDisplace: blurBuffer.bindToIndex(4),
-            strength: 0.25
+            strength: V3.one.scale(strength)
         });
         blurBuffer.destroy();
 
@@ -607,21 +745,48 @@ export default class WebGLRenderer {
         let hsl = this.processToTexture('hsl',{
             uTexture: tuneChannels.bindToIndex(3)
         })
+        let tint = this.processToTexture('tint',{
+            uTexture: hsl.bindToIndex(3),
+            uScale: Color.white.scale(opacity),
+            uOffset: Color.white.scale(1-opacity)
+        })
+        
         this.runShader('tint',{
-            uOffset: Color.white.scale(opacity)
+            uOffset: Color.white.scale(0.2)
         });
 
         this.runShader('displace',{
             uDisplace: perlin,
             strength: strength
         });
+
         this.runShader('mist',{
-            uNoise: hsl.bindToIndex(3)
+            uNoise: tint.bindToIndex(3)
         });
 
         perlin.destroy();
         tuneChannels.destroy();
         hsl.destroy();
+        tint.destroy();
+    }
+    doggoJumpscare(frame) {
+        let wave = 0.5 * (1+Math.sin(frame / 40));
+
+        let fadeOut = this.processToTexture('tint',{
+            uOffset: Color.white.scale(wave)
+        });
+
+        let shifted = this.processToTexture('mergeTexture',{
+            uTexture: this.readTextureObj,
+            uScale: fadeOut.bindToIndex(3),
+            uOffset: this.textureBuffers['doggo'].bindToIndex(4),
+            strength: (1-wave)
+        })
+        this.runShader('blit',{
+            uTexture: shifted
+        })
+        fadeOut.destroy();
+        shifted.destroy();
     }
 }
 
@@ -639,7 +804,7 @@ export class Texture {
      * @param {V3} size 
      * @param {Number} index 
      */
-    constructor(gl, size, index) {
+    constructor(gl, size, index = 0) {
         this.gl = gl;
         this.size = size;
         this.index = index;
@@ -681,6 +846,21 @@ export class Texture {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.bindTexture(gl.TEXTURE_2D, null);
     }
+    static async fromPath(gl, url) {
+        const imageData = await new Promise((resolve,reject)=>{
+            const image = new Image();
+            image.onload = () => {
+                resolve(image);
+            };
+            image.src = url;
+        })
+        const size = new V3(imageData.width,imageData.height);
+
+        const texture = new Texture(gl,size);
+        texture.setData(imageData);
+
+        return texture;
+    }
     bindToIndex(index) {
         this.index = index;
 
@@ -689,6 +869,23 @@ export class Texture {
         this.gl.bindTexture(this.gl.TEXTURE_2D, null);
 
         return this;
+    }
+    setData(image) {
+        const gl = this.gl;
+    
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        gl.texImage2D(
+            gl.TEXTURE_2D, 
+            0, 
+            gl.RGBA, 
+            gl.RGBA, 
+            gl.UNSIGNED_BYTE,
+            image
+        );
+        gl.bindTexture(gl.TEXTURE_2D, null);
     }
     destroy() {
         this.gl.deleteTexture(this.texture);

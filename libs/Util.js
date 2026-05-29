@@ -1,18 +1,18 @@
 export default class Util {
     pi = 3.14159
-    angToRad(ang) {
-        return ang * nPi / 180
+    static angToRad(ang) {
+        return ang * Math.PI / 180
     }
-    radToAng(ang) {
-        return rad * 180 / nPi
+    static radToAng(ang) {
+        return rad * 180 / Math.PI
     }
-    rndRange(min,max) {
+    static rndRange(min,max) {
         return min + (max-min)*Math.random()
     }
     static rndAng() {
         return 6.283 * Math.random()
     }
-    mapVal(v,vMin,vMax,oMin,oMax) {
+    static mapVal(v,vMin,vMax,oMin,oMax) {
         if(vMin===vMax) return oMin+0.5*(oMax-oMin)//can't map v
         let normalized = (v-vMin)/vMax
         return oMin+(oMax-oMin)*normalized

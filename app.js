@@ -47,9 +47,14 @@ setInterval(()=>{
     
     let afterPost = Date.now();
 
-    //console.log(`Exec time: ${afterExec - beforeExec}ms  |  Post time: ${afterPost - afterExec}ms`);
+    ms += afterPost - afterExec;
+    //console.log(`Average post time: ${ms / frameCounter.currValue}`);
 },1000/60);
 
+window.addEventListener('beforeunload',()=>{
+        webGLRenderer.destroy();
+    }
+);
 
 // Persio Quests:
 // - Shader pra recortar um layer da mesh 3d e mostrar o 'interior'

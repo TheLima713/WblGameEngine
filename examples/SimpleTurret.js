@@ -205,7 +205,8 @@ export default class Turret {
         this.renderer.fillCircle(drawPosition,this.searchRadius,new Color(0.3,0.3,0.3,0.3));
 
         //Body
-        this.renderer.fillCircle(drawPosition,size,color);
+        //this.renderer.fillCircle(drawPosition,size,color);
+        this.renderer.fillAimedCircle(this.position.add(offset),this.direction.scale(size).rot(-90,'Z'),color,0);
 
         //Tip
         let tipColor = color.scale(1.2);

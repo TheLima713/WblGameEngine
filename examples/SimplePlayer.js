@@ -332,6 +332,7 @@ class MobilePlayerUI {
 
         if(!touch.touching) {
             this.holdingInput = false;
+            this.lastTouchPosition = this.joystickCenter;
             return {
                 moved: false,
                 direction: V3.zero,
@@ -354,7 +355,7 @@ class MobilePlayerUI {
         else this.holdingInput = true;
 
         // TODO: Reoslve Quickfix: Think of using touchHeldTimer, or handling multiple touches, in InputManager
-        let deltaTouchPosition = (this.lastTouchPosition || this.joystickCenter).sub(touch.position).mag();
+        let deltaTouchPosition = this.lastTouchPosition.sub(touch.position).mag();
 
         if(deltaTouchPosition>100) {
             // prolly started another click on shootButton, just ignore

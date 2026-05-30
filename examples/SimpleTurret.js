@@ -29,7 +29,7 @@ export default class Turret {
     idleTimer = new Counter(100);
     lostTimer = new Counter(200);
     shootTimer = new Counter(150);
-    deactivateTimer = new Counter(100);
+    deactivateTimer = new Counter(200);
     
     bulletType = Bullet;
 
@@ -217,6 +217,7 @@ export default class Turret {
                 /** @type {Turret} */
                 let turret = this.params.turret;
                 turret.deactivateTimer.count();
+                turret.drawTextureName = 'tired';
 
                 if(!turret.deactivateTimer.over()) return this.name;
                 

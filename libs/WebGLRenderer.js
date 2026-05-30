@@ -139,8 +139,9 @@ export default class WebGLRenderer {
         await this.pushImageToArray('./images/mimir.jpeg','mimir',0);
         await this.pushImageToArray('./images/gamer.webp','gamer',1);
         await this.pushImageToArray('./images/doggo.png','hurt',2);
-        await this.pushImageToArray('./images/crazy.jpg','angry',3);
-        await this.pushImageToArray('./images/doozy.jpg','lost',4);
+        await this.pushImageToArray('./images/crazy.webp','angry',3);
+        await this.pushImageToArray('./images/lost.webp','lost',4);
+        await this.pushImageToArray('./images/tired.jpg','tired',5);
     }
     async loadShaders() {
         const shaders = await Promise.all(

@@ -16,8 +16,9 @@ import Turret from "./examples/SimpleTurret.js";
 import HomingBullet from "./examples/HomingBullet.js";
 
 console.log('Hello, world!');
+const isMobile = window.matchMedia("(pointer: coarse)").matches;
 
-let webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080).scale(0.5));
+let webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080).scale(0.75));
 await webGLRenderer.load();
 
 let inputManager = new InputManager('canvas');
@@ -25,14 +26,14 @@ let entityManager = new EntityManager(webGLRenderer,inputManager);
 let frameCounter = new Counter(0);
 
 let player = new Player();
-let turret = new Turret().setPosition(new V3(250,100));
-let turret2 = new Turret().setPosition(new V3(550,300)).setBulletType(HomingBullet);
+let turret = new Turret().setPosition(new V3(450,100));
+let turret2 = new Turret().setPosition(new V3(850,400)).setBulletType(HomingBullet);
 
 entityManager.addEntities([turret,turret2,player]);
 
 let ms = 0;
 
-entityManager.init();
+entityManager.init({isMobile: isMobile});
 setInterval(()=>{
     frameCounter.count();
 

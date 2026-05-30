@@ -17,21 +17,22 @@ import WebGLRenderer from "../libs/WebGLRenderer.js";
  */
 export default class Turret {
     color = new Color(0.3,0.4,0.6);
-    radius = 25;
-    tipWidth = 15;
-    tipHeight = 10;
+    drawTextureName = 'mimir';
+    radius = 75;
+    searchRadius = 400;
+    tipSize = new V3(35,25);
 
     position = new V3(120,120);
     direction = V3.normToTrig(Math.random());
     targetDirection = V3.normToTrig(Math.random());
 
     idleTimer = new Counter(100);
-    shootTimer = new Counter(300);
+    lostTimer = new Counter(200);
+    shootTimer = new Counter(150);
     deactivateTimer = new Counter(100);
     
     bulletType = Bullet;
 
-    searchRadius = 200;
     /**@type {StateMachine} */
     stateMachine;
     //These are filled by the EntityManager:
@@ -63,6 +64,7 @@ export default class Turret {
             exec(execParams){
                 /**@type {Turret} */
                 let turret = this.params.turret;
+                turret.drawTextureName = 'mimir';
 
                 turret.idleTimer.count();
 
@@ -76,6 +78,43 @@ export default class Turret {
 
                 if(!turret.idleTimer.over()) return this.name;
                 return 'idle';
+            },
+            draw(drawParams){
+                /** @type {Turret} */
+                let turret = this.params.turret;
+                turret.drawTurret();
+            },
+            exit(exitParams) {
+                return this.params;
+            }
+        });
+        
+        let lost = new State({
+            name: 'lost',
+            params: params,
+            init(initParams) {
+                if(initParams) this.params = {
+                    ...initParams,
+                    ...this.params
+                };
+
+                /**@type {Turret} */
+                let turret = this.params.turret;
+                turret.lostTimer.reset();
+            },
+            exec(execParams){
+                /**@type {Turret} */
+                let turret = this.params.turret;
+                turret.drawTextureName = 'lost';
+
+                turret.lostTimer.count();
+
+                let foundPlayer = turret.searchForPlayer();
+                if(foundPlayer) return 'targetting';
+
+                if(!turret.lostTimer.over()) return this.name;
+
+                return 'moving';
             },
             draw(drawParams){
                 /** @type {Turret} */
@@ -103,11 +142,12 @@ export default class Turret {
             exec(execParams){
                 /**@type {Turret} */
                 let turret = this.params.turret;
+                turret.drawTextureName = 'angry';
                 
                 turret.shootTimer.count();
 
                 let foundPlayer = turret.searchForPlayer();
-                if(!foundPlayer) return 'moving';
+                if(!foundPlayer) return 'lost';
                 
                 //Follow player
                 let newDirection = foundPlayer.position.sub(turret.position).normalized();
@@ -117,7 +157,7 @@ export default class Turret {
                 //Shoot player
                 if(turret.shootTimer.over()) {
                     turret.shootBullet();
-                    turret.shootTimer.reset();
+                    turret.shootTimer.reset(-25);
                 }
 
                 return this.name;
@@ -144,6 +184,7 @@ export default class Turret {
             exec(execParams){
                 /** @type {Turret} */
                 let turret = this.params.turret;
+
                 turret.idleTimer.count();
 
                 let foundPlayer = turret.searchForPlayer();
@@ -193,7 +234,7 @@ export default class Turret {
             }
         });
 
-        this.stateMachine = new StateMachine([moving,targetting,deactivated,idle]);
+        this.stateMachine = new StateMachine([moving,targetting,deactivated,idle,lost]);
     }
     setPosition(position) {
         this.position = position;
@@ -204,34 +245,32 @@ export default class Turret {
         //Area
         this.renderer.fillCircle(drawPosition,this.searchRadius,new Color(0.3,0.3,0.3,0.3));
 
-        //Body
-        //this.renderer.fillCircle(drawPosition,size,color);
-        this.renderer.fillAimedCircle(this.position.add(offset),this.direction.scale(size).rot(-90,'Z'),color,0);
-
         //Tip
         let tipColor = color.scale(1.2);
-        let tipStart = drawPosition.add(this.direction.scale(size/2));
+        let tipRecoil = Math.min(this.shootTimer.progress(),0);
+        let tipCenter = drawPosition.add(this.direction.scale(size));
 
-        let tipEnd = tipStart.add(this.direction.scale(this.tipHeight));
-
-        let shouldRecoil = this.stateMachine.currState.name === 'targetting';
-        let tipRecoil = 0.25 - Math.min(this.shootTimer.progress(),0.25);
-        if(shouldRecoil) tipEnd = tipEnd.sub(this.direction.scale(tipRecoil * this.tipHeight));
+        this.renderer.fillAimedRect(
+            tipCenter,
+            this.tipSize.mult(new V3(1,1+tipRecoil)),
+            this.direction,
+            tipColor
+        );
         
-        if(this.renderer.gl) {
-            let tipCenter = drawPosition.add(this.direction.scale(size));
-            let tipSize = new V3(this.tipWidth,this.tipHeight);
-            if(shouldRecoil) tipSize = tipSize.mult(new V3(1,1-tipRecoil));
+        //Ring
+        
+        this.renderer.fillCircle(this.position.add(offset),size * 1.1,color);
 
-            this.renderer.fillAimedRect(
-                tipCenter,
-                tipSize,
-                this.direction,
-                tipColor
-            );
-            return;
-        }
-        //this.renderer.fillLine(tipStart,tipEnd, tipColor, this.tipWidth);
+        let facingLeft = this.direction.x < 0;
+        let textureDirection = facingLeft ? this.direction.scale(size).rot(-90,'Z') : this.direction.scale(size).rot(90,'Z');
+        //Body
+        this.renderer.fillAimedCircle(
+            this.position.add(offset),
+            textureDirection,
+            color,
+            this.drawTextureName
+        );
+
     }
     searchForPlayer() {
         let players = this.entityManager.getEntities(Player);
@@ -251,7 +290,7 @@ export default class Turret {
         turret.direction = turret.direction.lerp(turret.targetDirection,strength).normalized();
     }
     shootBullet() {
-        let newBullet = new this.bulletType(this.position, this.direction);
+        let newBullet = new this.bulletType(this.position.add(this.direction.scale(this.radius)), this.direction);
         let player = this.entityManager.getEntities(Player)[0];
         
         if(newBullet.setTarget) newBullet.setTarget(player);

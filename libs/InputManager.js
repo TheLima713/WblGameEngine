@@ -64,10 +64,8 @@ export default class InputManager {
             var x = event.changedTouches[0].clientX - rect.left;
             var y = event.changedTouches[0].clientY - rect.top;
             
-            this.mouse.leftClick = true;
-
             this.touch.touching = true;
-            this.mouse.position = new V3(x,y);
+            this.touch.position = new V3(x,y);
             
             this.onInput(event);
         });
@@ -78,8 +76,6 @@ export default class InputManager {
             var x = event.changedTouches[0].clientX - rect.left;
             var y = event.changedTouches[0].clientY - rect.top;
             
-            this.mouse.position = new V3(x,y);
-
             this.touch.touching = true;
             this.touch.position = new V3(x,y);
             
@@ -91,9 +87,6 @@ export default class InputManager {
             var rect = event.target.getBoundingClientRect();
             var x = event.changedTouches[0].clientX - rect.left;
             var y = event.changedTouches[0].clientY - rect.top;
-            
-            this.mouse.leftClick = false;
-            this.mouse.position = new V3(x,y);
             
             this.touch.touching = false;
             this.touch.position = V3.zero;

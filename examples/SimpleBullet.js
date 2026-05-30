@@ -10,14 +10,15 @@ import Player from "./SimplePlayer.js";
 export default class Bullet {
     position = new V3(0,0);
     direction = new V3(0,0);
-    velocity = 5;
-    radius = 4;
+    velocity = 3;
+    radius = 5;
     color = Color.yellow;
 
     targetType = Player;
 
-    lifeTimer = new Counter(75);
+    lifeTimer = new Counter(275);
     dyingTimer = new Counter(25);
+    trailTimer = new Counter(3);
 
     trailPositions = [];
     trailLengthMax = 15;
@@ -51,9 +52,13 @@ export default class Bullet {
                 /**@type {Bullet} */
                 let bullet = this.params.bullet;
                 bullet.lifeTimer.count();
+                bullet.trailTimer.count();
 
-                bullet.trailPositions.push(bullet.position);
-                if(bullet.trailPositions.length>bullet.trailLengthMax) bullet.trailPositions.shift();
+                if(bullet.trailTimer.over()) {
+                    bullet.trailPositions.push(bullet.position);
+                    if(bullet.trailPositions.length>bullet.trailLengthMax) bullet.trailPositions.shift();
+                    bullet.trailTimer.reset();
+                }
                 //Move
                 bullet.move();
                 

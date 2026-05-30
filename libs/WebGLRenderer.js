@@ -40,7 +40,7 @@ const shaderParams = {
         strength: 1.0
     },
     'displace': {
-        strength: 0.005,
+        strength: V3.one.scale(0.005),
         offset: new V3(0,0.01,0)
     },
     'edge': {
@@ -92,6 +92,7 @@ export default class WebGLRenderer {
     /** @type {Texture} */
     swapBuffer;
     textureArrayBuffer;
+    textureArrayIndexes = {};
 
     /**
      * @param {String} canvasId 
@@ -112,10 +113,7 @@ export default class WebGLRenderer {
     //Shader Loading
     
     async load() {
-        this.initTextureArray(new V3(212,212),4);
-        this.textureBuffers['hurt-doggo'] = await Texture.fromPath(this.gl,'./images/doggo.png');
-        await this.pushImageToArray('./images/mimir.jpeg',0);
-
+        await this.loadImages();
         await this.loadDrawTriShader();
 
         this.readTextureObj =  new Texture(this.gl,this.size,0);
@@ -134,6 +132,15 @@ export default class WebGLRenderer {
         this.writeTextureObjswapBuffer.destroy();
         this.swapBuffer.destroy();
         this.gl.deleteTexture(this.textureArrayBuffer);
+    }
+    async loadImages() {
+        this.initTextureArray(this.size,8);
+        this.textureBuffers['hurt-doggo'] = await Texture.fromPath(this.gl,'./images/doggo.png');
+        await this.pushImageToArray('./images/mimir.jpeg','mimir',0);
+        await this.pushImageToArray('./images/gamer.webp','gamer',1);
+        await this.pushImageToArray('./images/doggo.png','hurt',2);
+        await this.pushImageToArray('./images/crazy.jpg','angry',3);
+        await this.pushImageToArray('./images/doozy.jpg','lost',4);
     }
     async loadShaders() {
         const shaders = await Promise.all(
@@ -246,6 +253,8 @@ export default class WebGLRenderer {
         const gl = this.gl;
         this.textureArraySize = size;
 
+        const zeroData = new Uint8Array(size.x * size.y * length * 4); 
+
         this.textureArrayBuffer = gl.createTexture();
         gl.activeTexture(gl.TEXTURE3);//
         gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.textureArrayBuffer);
@@ -266,7 +275,7 @@ export default class WebGLRenderer {
             gl.RGBA,
             gl.UNSIGNED_BYTE,
 
-            null
+            zeroData
         );
 
         gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
@@ -274,10 +283,10 @@ export default class WebGLRenderer {
 
         gl.bindTexture(gl.TEXTURE_2D_ARRAY,null);
     }
-    async pushImageToArray(path,index) {
+    async pushImageToArray(path,name,index) {
         const gl = this.gl;
 
-        const imageData = await new Promise((resolve,reject)=>{
+        var imageData = await new Promise((resolve,reject)=>{
             const image = new Image();
             image.onload = () => {
                 resolve(image);
@@ -287,8 +296,8 @@ export default class WebGLRenderer {
         const size = new V3(imageData.width,imageData.height);
 
         if(!size.equals(this.textureArraySize)) {
-            console.log(`Image is of wrong size [${size.x + ',' + size.y}], required: (${this.textureArraySize.x + ',' + this.textureArraySize.y})`);
-            return;
+            imageData = this.scaleImage(imageData,this.textureArraySize);
+            console.log(`Re-scaled image from size [${size.x + ',' + size.y}], to required [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
         }
 
         gl.activeTexture(gl.TEXTURE3);
@@ -310,8 +319,24 @@ export default class WebGLRenderer {
 
             imageData
         );
+        
+        this.textureArrayIndexes[name] = index;
 
         gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+    }
+    scaleImage(image,size) {
+        const canvas = document.createElement('canvas');
+        canvas.width = size.x;
+        canvas.height = size.y;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(
+            image,
+            0, 0,
+            size.x, size.y
+        );
+
+        return canvas;
     }
 
     // Drawing
@@ -340,8 +365,8 @@ export default class WebGLRenderer {
         let direction = p2.sub(p1).normalized();
         let rotDirection = new V3(-direction.y,direction.x);
 
-        let point1 = p1.add(rotDirection.scale(width/2));
-        let point2 = p1.add(rotDirection.scale(-width/2));
+        let point2 = p1.add(rotDirection.scale(width/2));
+        let point1 = p1.add(rotDirection.scale(-width/2));
         let point3 = p2.add(rotDirection.scale(endWidth/2));
         let point4 = p2.add(rotDirection.scale(-endWidth/2));
 
@@ -360,12 +385,13 @@ export default class WebGLRenderer {
      * @param {Number} radius 
      * @param {Color} color 
      */
-    fillCircle(center,radius,color = Color.white, textureIndex = -1) {
+    fillCircle(center,radius,color = Color.white, textureName = '') {
         let p1 = center.add(new V3(radius,-radius));
         let p2 = center.add(new V3(-radius,-radius));
         let p3 = center.add(new V3(-radius,radius));
         let p4 = center.add(new V3(radius,radius));
 
+        let textureIndex = this.textureArrayIndexes[textureName];
         this.pushQuadToBuffer(p2,p3,p4,p1,'circle',color, textureIndex);
     }
     /**
@@ -374,10 +400,12 @@ export default class WebGLRenderer {
      * @param {V3} radius 
      * @param {Color} color 
      */
-    fillAimedCircle(center,radius,color = Color.white, textureIndex = -1) {
+    fillAimedCircle(center,radius,color = Color.white, textureName = '') {
         let diagonal = radius.add(new V3(-radius.y,radius.x));
         let diagonal90 = new V3(-diagonal.y,diagonal.x);
 
+        let textureIndex = this.textureArrayIndexes[textureName];
+        
         let p1 = center.add(diagonal90);
         let p2 = center.add(diagonal);
         let p3 = center.sub(diagonal90);
@@ -398,7 +426,9 @@ export default class WebGLRenderer {
      * @param {V3} p4 
      * @param {Color} color 
      */
-    fillTriangle(p1,p2,p3,color = Color.white, textureIndex = -1) {
+    fillTriangle(p1,p2,p3,color = Color.white, textureName = '') {
+        let textureIndex = this.textureArrayIndexes[textureName];
+
         this.pushQuadToBuffer(p1,p2,p3,V3.zero,'tri',color,textureIndex);
     }
     /**
@@ -406,9 +436,11 @@ export default class WebGLRenderer {
      * @param {V3} size 
      * @param {Color} color 
      */
-    fillRect(point,size,color = Color.white, textureIndex = -1) {
+    fillRect(point,size,color = Color.white, textureName = '') {
         let start = point;
         let end = point.add(size);
+
+        let textureIndex = this.textureArrayIndexes[textureName];
 
         this.pushQuadToBuffer(
             new V3(start.x,end.y),
@@ -427,7 +459,13 @@ export default class WebGLRenderer {
      * @param {V3} direction 
      * @param {Color} color 
      */
-    fillAimedRect(center,size,direction,color = Color.white, textureIndex = -1) {
+    fillAimedRect(
+        center,
+        size,
+        direction,
+        color = Color.white,
+        textureName = ''
+    ) {
         direction = direction.normalized();
         let heightDir = direction.scale(size.y);
 
@@ -438,6 +476,8 @@ export default class WebGLRenderer {
         let p2 = center.sub(widthDir).sub(heightDir);
         let p3 = center.sub(widthDir).add(heightDir);
         let p4 = center.add(widthDir).add(heightDir);
+
+        let textureIndex = this.textureArrayIndexes[textureName];
 
         this.pushQuadToBuffer(
             p1,p2,p3,p4,
@@ -456,6 +496,7 @@ export default class WebGLRenderer {
      */
     pushQuadToBuffer(p1,p2,p3,p4,type,color = Color.white, textureIndex = -1, emission = 0.0, cornerRadius = 0.0) {
         const typeIndex = this.quadTypeIndexes[type];
+        
         //assume p1 is the initial tip, of UV [0,0]
         let points = [p1,p2,p3,p4];
         let UVs = [
@@ -772,7 +813,7 @@ export default class WebGLRenderer {
         tint.destroy();
     }
     doggoJumpscare(frame) {
-        let wave = (Math.sin(frame * 3.1415));
+        let wave = (Math.sin(frame));
 
         let fadeOut = this.processToTexture('tint',{
             uOffset: Color.white.scale(wave)

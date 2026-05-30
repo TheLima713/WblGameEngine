@@ -4,12 +4,13 @@ import Counter from "../libs/Counter.js";
 import Bullet from "./SimpleBullet.js";
 
 export default class HomingBullet extends Bullet{
-    velocity = 2;
-    radius = 6;
+    velocity = 1;
+    radius = 7;
     color = new Color(0,0.9,0.9);
+    trailTimer = new Counter(5);
 
     target;
-    lifeTimer = new Counter(150);
+    lifeTimer = new Counter(550);
     move() {
         let targetDirection = this.target.position.sub(this.position).normalized();
         

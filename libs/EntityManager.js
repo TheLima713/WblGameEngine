@@ -31,9 +31,9 @@ export default class EntityManager {
         })
         return entities;
     }
-    init() {
+    init(initParams) {
         this.entities.forEach((entity)=>{
-            entity.stateMachine.init();
+            entity.stateMachine.init(initParams);
         })
     }
     run() {

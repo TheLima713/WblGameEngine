@@ -234,9 +234,8 @@ export default class Player {
                 moveDirection = moveInput.direction;
                 this.direction = moveDirection;
             }
-            let aimInput = this.mobileUI?.getAimInput();
-            if(aimInput.aimed) {
-                this.direction = aimInput.direction;
+            if(moveInput.aimed) {
+                this.direction = moveInput.aim;
             }
         }
         //console.log(moveInput.moved,aimInput.aimed,moveInput.direction,aimInput.direction)
@@ -331,7 +330,9 @@ class MobilePlayerUI {
             this.holdingInput = false;
             return {
                 moved: false,
-                direction: V3.zero
+                direction: V3.zero,
+                aimed: false,
+                aim: V3.zero
             };
         }
 
@@ -341,7 +342,9 @@ class MobilePlayerUI {
             //outside input
             return {
                 moved: false,
-                direction: V3.zero
+                direction: V3.zero,
+                aimed: false,
+                aim: V3.zero
             };
         }
         else this.holdingInput = true;
@@ -350,48 +353,31 @@ class MobilePlayerUI {
             //only aiming, not moving
             return {
                 moved: false,
-                direction: V3.zero
+                direction: V3.zero,
+                aimed: true,
+                aim: direction.normalized()
+            };
+        }
+
+        // TODO: Reoslve Quickfix: Think of using touchHeldTimer, or handling multiple touches, in InputManager
+        if(this.joystickPosition.sub(touch.position).mag()>20) {
+            // prolly started another click on shootButton, just ignore
+            return {
+                moved: false,
+                direction: V3.zero,
+                aimed: false,
+                aim: V3.zero
             };
         }
 
         var maxJoystickDistance = Math.min(this.joystickRadius, direction.mag());
-
         this.joystickPosition = this.joystickCenter.add(direction.normalized().scale(maxJoystickDistance));
         
         return {
             moved: true,
-            direction: direction.normalized()
-        };
-    }
-    getAimInput() {
-        const touch = this.inputManager.touch;
-        if(!touch.touching) {
-            this.holdingInput = false;
-            this.joystickPosition = this.joystickCenter;
-            return {
-                aimed: false,
-                direction: V3.zero
-            };
-        }
-
-        var direction = touch.position.sub(this.joystickCenter);
-
-        if(direction.mag()>this.joystickRadius && this.holdingInput===false) {
-            //outside input
-            return {
-                moved: false,
-                direction: V3.zero
-            };
-        }
-        else this.holdingInput = true;
-
-        var maxJoystickDistance = Math.min(this.joystickRadius, direction.mag());
-
-        this.joystickPosition = this.joystickCenter.add(direction.normalized().scale(maxJoystickDistance));
-        
-        return {
+            direction: direction.normalized(),
             aimed: true,
-            direction: direction.normalized()
+            aim: direction.normalized()
         };
     }
     getShootInput() {

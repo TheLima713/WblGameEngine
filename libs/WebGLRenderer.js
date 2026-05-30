@@ -124,6 +124,13 @@ export default class WebGLRenderer {
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
         
         await this.loadShaders();
+        
+        let fadeOut = this.processToTexture('tint',{
+            uTexture: this.textureBuffers['gamer-doggo'],
+            uScale: Color.white
+        });
+        this.pushTextureToArray(fadeOut,'fade-doggo',7);
+        fadeOut.destroy();
     }
     destroy() {
         this.gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);//
@@ -136,12 +143,15 @@ export default class WebGLRenderer {
     async loadImages() {
         this.initTextureArray(this.size,8);
         this.textureBuffers['hurt-doggo'] = await Texture.fromPath(this.gl,'./images/doggo.png');
+        this.textureBuffers['gamer-doggo'] = await Texture.fromPath(this.gl,'./images/gamer.webp');
+        
         await this.pushImageToArray('./images/mimir.jpeg','mimir',0);
         await this.pushImageToArray('./images/gamer.webp','gamer',1);
         await this.pushImageToArray('./images/doggo.png','hurt',2);
         await this.pushImageToArray('./images/crazy.webp','angry',3);
         await this.pushImageToArray('./images/lost.webp','lost',4);
         await this.pushImageToArray('./images/tired.jpg','tired',5);
+        
     }
     async loadShaders() {
         const shaders = await Promise.all(
@@ -324,6 +334,42 @@ export default class WebGLRenderer {
         this.textureArrayIndexes[name] = index;
 
         gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+    }
+    /**
+     * 
+     * @param {Texture} texture 
+     * @param {Number} index 
+     */
+    async pushTextureToArray(texture,name,index) {
+        const gl = this.gl;
+        
+        const size = texture.size;
+
+        if(!size.equals(this.textureArraySize)) {
+            imageData = this.scaleImage(imageData,this.textureArraySize);
+            console.log(`Re-scaled image from size [${size.x + ',' + size.y}], to required [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER,texture.buffer);
+
+        gl.activeTexture(gl.TEXTURE3);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.textureArrayBuffer);
+        
+        gl.copyTexSubImage3D(
+            gl.TEXTURE_2D_ARRAY,
+
+            0,
+
+            0,0,index,
+            0,0,
+            this.textureArraySize.x,
+            this.textureArraySize.y
+        );
+        
+        this.textureArrayIndexes[name] = index;
+
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER,null);
     }
     scaleImage(image,size) {
         const canvas = document.createElement('canvas');
@@ -609,23 +655,15 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
-        //let wave = 0.5 * (1+Math.sin(frame / 40));
-//
-        //let fadeOut = this.processToTexture('tint',{
-        //    uOffset: Color.white.scale(wave)
-        //});
-//
-        //let shifted = this.processToTexture('mergeTexture',{
-        //    uTexture: this.readTextureObj,
-        //    uScale: fadeOut.bindToIndex(5),
-        //    uOffset: this.textureBuffers['doggo'].bindToIndex(6),
-        //    strength: (1-wave)
-        //})
-        //this.runShader('blit',{
-        //    uTexture: shifted
-        //})
-        //fadeOut.destroy();
-        //shifted.destroy();
+        let wave = 0.5 * (1+Math.sin(frame / 40));
+
+        let fadeOut = this.processToTexture('tint',{
+            uTexture: this.textureBuffers['gamer-doggo'],
+            uScale: Color.white.scale(wave)
+        });
+        this.pushTextureToArray(fadeOut,'fade-doggo',7);
+        //this.runShader('blit',{uTexture:fadeOut});
+        fadeOut.destroy();
 
         this.shaderExecutionBuffer.forEach((exec)=>{
             if(exec.function) exec.function();

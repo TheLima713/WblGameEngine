@@ -93,7 +93,8 @@ export default class Player {
             exec(execParams){
                 /** @type {Player} */
                 let player = this.params.player;
-                player.drawTextureName = 'gamer';
+                //player.drawTextureName = 'gamer';
+                player.drawTextureName = 'fade-doggo';
                 
                 player.shootTimer.count();
                 player.waveTimer.count();

@@ -24,7 +24,7 @@ export default class Player {
     spawnPoint = new V3(150,420);
     position = this.spawnPoint;
     direction = new V3(0,1);
-    speed = V3.one.scale(10);
+    speed = V3.one.scale(5);
     
     inputLocked = true;
     
@@ -214,6 +214,20 @@ export default class Player {
         this.stateMachine = new StateMachine([spawning,idle,frozen,dying]);
     }
     handleMovement() {
+        let moveDirection = new V3(0,0);
+
+        if(this.mobileUI) {
+            let moveInput = this.mobileUI?.getMoveInput();
+            if(moveInput.moved) {
+                moveDirection = moveInput.direction;
+            }
+            if(moveInput.aimed) {
+                this.direction = moveInput.aim;
+            }
+            this.position = this.position.add(moveDirection.mult(this.speed));
+            return;
+        }
+
         //Aiming
         let mousePosition = this.inputManager.mouse.position;
         
@@ -222,23 +236,10 @@ export default class Player {
         this.direction = newDirection;
 
         //Moving
-        let moveDirection = new V3(0,0);
         ['w','a','s','d'].forEach(key=>{
             if(this.inputManager.keyboard[key]) moveDirection = moveDirection.add(this.mapInputToDir(key));
         })
         moveDirection = moveDirection.normalized();
-
-        if(this.mobileUI) {
-            let moveInput = this.mobileUI?.getMoveInput();
-            if(moveInput.moved) {
-                moveDirection = moveInput.direction;
-                this.direction = moveDirection;
-            }
-            if(moveInput.aimed) {
-                this.direction = moveInput.aim;
-            }
-        }
-        //console.log(moveInput.moved,aimInput.aimed,moveInput.direction,aimInput.direction)
 
         this.position = this.position.add(moveDirection.mult(this.speed));
     }
@@ -303,8 +304,9 @@ class MobilePlayerUI {
     /**@type {InputManager} */
     inputManager;
 
-    offColor = Color.white.scale(0.1);
-    onColor = Color.white.scale(0.4);
+    offColor = Color.white.scale(0.1).setAlpha(0.5);
+    midColor = Color.white.scale(0.2).setAlpha(0.5);
+    onColor = Color.white.scale(0.4).setAlpha(0.5);
 
     joystickCenter = new V3(200,600);
     joystickRadius = 125;
@@ -317,6 +319,7 @@ class MobilePlayerUI {
     shootButtonPosition = new V3(1200,600);
     shootButtonRadius = 50;
 
+    lastTouchPosition = null;
     holdingInput = false;
 
     constructor(renderer,inputManager) {
@@ -326,6 +329,7 @@ class MobilePlayerUI {
     getMoveInput() {
         const touch = this.inputManager.touch;
         this.joystickPosition = this.joystickCenter;
+
         if(!touch.touching) {
             this.holdingInput = false;
             return {
@@ -349,6 +353,23 @@ class MobilePlayerUI {
         }
         else this.holdingInput = true;
 
+        // TODO: Reoslve Quickfix: Think of using touchHeldTimer, or handling multiple touches, in InputManager
+        let deltaTouchPosition = (this.lastTouchPosition || this.joystickCenter).sub(touch.position).mag();
+
+        if(deltaTouchPosition>100) {
+            // prolly started another click on shootButton, just ignore
+            return {
+                moved: false,
+                direction: V3.zero,
+                aimed: false,
+                aim: V3.zero
+            };
+        }
+
+        this.lastTouchPosition = touch.position;
+        var maxJoystickDistance = Math.min(this.joystickRadius, direction.mag());
+        this.joystickPosition = this.joystickCenter.add(direction.normalized().scale(maxJoystickDistance));
+
         if(direction.mag()<this.joystickAimRadius) {
             //only aiming, not moving
             return {
@@ -359,20 +380,6 @@ class MobilePlayerUI {
             };
         }
 
-        // TODO: Reoslve Quickfix: Think of using touchHeldTimer, or handling multiple touches, in InputManager
-        if(this.joystickPosition.sub(touch.position).mag()>20) {
-            // prolly started another click on shootButton, just ignore
-            return {
-                moved: false,
-                direction: V3.zero,
-                aimed: false,
-                aim: V3.zero
-            };
-        }
-
-        var maxJoystickDistance = Math.min(this.joystickRadius, direction.mag());
-        this.joystickPosition = this.joystickCenter.add(direction.normalized().scale(maxJoystickDistance));
-        
         return {
             moved: true,
             direction: direction.normalized(),
@@ -394,6 +401,11 @@ class MobilePlayerUI {
             this.joystickCenter,
             this.joystickRadius,
             this.offColor
+        );
+        this.renderer.fillCircle(
+            this.joystickCenter,
+            this.joystickAimRadius,
+            this.midColor
         );
         this.renderer.fillCircle(
             this.joystickPosition,

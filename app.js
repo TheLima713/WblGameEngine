@@ -14,6 +14,7 @@ import Counter from "./libs/Counter.js";
 import Player from "./examples/SimplePlayer.js";
 import Turret from "./examples/SimpleTurret.js";
 import HomingBullet from "./examples/HomingBullet.js";
+import Color from "./libs/Color.js";
 
 console.log('Hello, world!');
 const isMobile = window.matchMedia("(pointer: coarse)").matches;

@@ -62,7 +62,7 @@ export default class WebGLRenderer {
     size = new V3(0,0);
     offset = new V3(0,0);
     /** @type {HTMLCanvasElement} */
-    canvas;
+    canvas;sad
     /** @type {WebGL2RenderingContext} */
     gl;
     shaders = {};
@@ -92,7 +92,9 @@ export default class WebGLRenderer {
     /** @type {Texture} */
     swapBuffer;
     textureArrayBuffer;
-    textureArrayIndexes = {};
+    textureArrayIndexes = {
+        'none': -1
+    };
 
     /**
      * @param {String} canvasId 
@@ -135,8 +137,8 @@ export default class WebGLRenderer {
     destroy() {
         this.gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);//
 
-        this.readTextureObjswapBuffer.destroy();
-        this.writeTextureObjswapBuffer.destroy();
+        this.readTextureObj.destroy();
+        this.writeTextureObj.destroy();
         this.swapBuffer.destroy();
         this.gl.deleteTexture(this.textureArrayBuffer);
     }
@@ -241,6 +243,7 @@ export default class WebGLRenderer {
     }
     pushTextureBuffer(name) {
         if(this.textureBuffers[name]) this.textureBuffers[name].destroy();
+
         const currLength = Object.keys(this.textureBuffers).length;
         const texture = new Texture(this.gl,this.size,name,currLength + 3);//jump over read/write/swap buffers
         this.textureBuffers[name] = texture;
@@ -308,7 +311,7 @@ export default class WebGLRenderer {
 
         if(!size.equals(this.textureArraySize)) {
             imageData = this.scaleImage(imageData,this.textureArraySize);
-            console.log(`Re-scaled image from size [${size.x + ',' + size.y}], to required [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
+            console.log(`Re-scaled image "${name}" from [${size.x + ',' + size.y}] to [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
         }
 
         gl.activeTexture(gl.TEXTURE3);
@@ -347,7 +350,7 @@ export default class WebGLRenderer {
 
         if(!size.equals(this.textureArraySize)) {
             imageData = this.scaleImage(imageData,this.textureArraySize);
-            console.log(`Re-scaled image from size [${size.x + ',' + size.y}], to required [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
+            console.log(`Re-scaled image "${name}" from [${size.x + ',' + size.y}] to [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
         }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER,texture.buffer);
@@ -388,14 +391,15 @@ export default class WebGLRenderer {
 
     // Drawing
 
-    fill(color = Color.black) {
+    fill(color = Color.black, textureName = 'none') {
         this.pushQuadToBuffer(
             new V3(0,this.size.y),
             V3.zero,
             new V3(this.size.x,0),
             this.size.copy(),
             'quad',
-            color
+            color,
+            'none'
         );
     }
     /**
@@ -406,7 +410,7 @@ export default class WebGLRenderer {
      * @param {Number} width 
      * @param {Number} endWidth 
      */
-    fillLine(p1,p2,color = Color.white, width = 1, endWidth = null) {
+    fillLine(p1,p2,color = Color.white, width = 1, textureName = 'none', endWidth = null) {
         if(endWidth===null) endWidth = width;
 
         let direction = p2.sub(p1).normalized();
@@ -423,7 +427,8 @@ export default class WebGLRenderer {
             point3,
             point4,
             'quad',
-            color
+            color,
+            textureName
         );
     }
     /**
@@ -432,14 +437,13 @@ export default class WebGLRenderer {
      * @param {Number} radius 
      * @param {Color} color 
      */
-    fillCircle(center,radius,color = Color.white, textureName = '') {
+    fillCircle(center,radius,color = Color.white, textureName = 'none') {
         let p1 = center.add(new V3(radius,-radius));
         let p2 = center.add(new V3(-radius,-radius));
         let p3 = center.add(new V3(-radius,radius));
         let p4 = center.add(new V3(radius,radius));
 
-        let textureIndex = this.textureArrayIndexes[textureName];
-        this.pushQuadToBuffer(p2,p3,p4,p1,'circle',color, textureIndex);
+        this.pushQuadToBuffer(p2,p3,p4,p1,'circle',color, textureName);
     }
     /**
      * 
@@ -447,22 +451,20 @@ export default class WebGLRenderer {
      * @param {V3} radius 
      * @param {Color} color 
      */
-    fillAimedCircle(center,radius,color = Color.white, textureName = '') {
+    fillAimedCircle(center,radius,color = Color.white, textureName = 'none') {
         let diagonal = radius.add(new V3(-radius.y,radius.x));
         let diagonal90 = new V3(-diagonal.y,diagonal.x);
 
-        let textureIndex = this.textureArrayIndexes[textureName];
-        
-        let p1 = center.add(diagonal90);
-        let p2 = center.add(diagonal);
-        let p3 = center.sub(diagonal90);
-        let p4 = center.sub(diagonal);
+        let p1 = center.sub(diagonal);
+        let p2 = center.sub(diagonal90);
+        let p3 = center.add(diagonal);
+        let p4 = center.add(diagonal90);
 
         this.pushQuadToBuffer(
             p1,p2,p3,p4,
             'circle',
             color,
-            textureIndex
+            textureName
         );
     }
     /**
@@ -473,21 +475,16 @@ export default class WebGLRenderer {
      * @param {V3} p4 
      * @param {Color} color 
      */
-    fillTriangle(p1,p2,p3,color = Color.white, textureName = '') {
-        let textureIndex = this.textureArrayIndexes[textureName];
-
-        this.pushQuadToBuffer(p1,p2,p3,V3.zero,'tri',color,textureIndex);
+    fillTriangle(p1,p2,p3,color = Color.white, textureName = 'none') {
+        this.pushQuadToBuffer(p3,p1,p2,p2.copy(),'quad',color,textureName);
     }
     /**
      * @param {V3} point 
      * @param {V3} size 
      * @param {Color} color 
      */
-    fillRect(point,size,color = Color.white, textureName = '') {
+    fillRect(point,size,color = Color.white, textureName = 'none') {
         let start = point;
-        let end = point.add(size);
-
-        let textureIndex = this.textureArrayIndexes[textureName];
 
         this.pushQuadToBuffer(
             new V3(start.x,end.y),
@@ -496,7 +493,7 @@ export default class WebGLRenderer {
             end,
             'tri',
             color,
-            textureIndex
+            textureName
         );
     }
     /**
@@ -511,7 +508,7 @@ export default class WebGLRenderer {
         size,
         direction,
         color = Color.white,
-        textureName = ''
+        textureName = 'none'
     ) {
         direction = direction.normalized();
         let heightDir = direction.scale(size.y);
@@ -524,13 +521,11 @@ export default class WebGLRenderer {
         let p3 = center.sub(widthDir).add(heightDir);
         let p4 = center.add(widthDir).add(heightDir);
 
-        let textureIndex = this.textureArrayIndexes[textureName];
-
         this.pushQuadToBuffer(
-            p1,p2,p3,p4,
+            p2,p3,p4,p1,
             'quad',
             color,
-            textureIndex
+            textureName
         );
     }
     /**
@@ -541,9 +536,15 @@ export default class WebGLRenderer {
      * @param {V3} p4 
      * @param {Color} color 
      */
-    pushQuadToBuffer(p1,p2,p3,p4,type,color = Color.white, textureIndex = -1, emission = 0.0, cornerRadius = 0.0) {
+    pushQuadToBuffer(p1,p2,p3,p4,type,color = Color.white, textureName, emission = 0.0, cornerRadius = 0.0) {
         const typeIndex = this.quadTypeIndexes[type];
         
+        let textureIndex = this.textureArrayIndexes[textureName];
+        if(textureIndex===undefined) {
+            throw new Error(`Texture ${textureName} not found.`);
+            textureIndex = -1;
+        }
+
         //assume p1 is the initial tip, of UV [0,0]
         let points = [p1,p2,p3,p4];
         let UVs = [

@@ -21,7 +21,7 @@ export default class Player {
     
     /**@type {MobilePlayerUI} */
     mobileUI;
-    spawnPoint = new V3(150,420);
+    spawnPoint = new V3(150,420,15);
     position = this.spawnPoint;
     direction = new V3(0,1);
     speed = V3.one.scale(5);
@@ -93,8 +93,8 @@ export default class Player {
             exec(execParams){
                 /** @type {Player} */
                 let player = this.params.player;
-                //player.drawTextureName = 'gamer';
-                player.drawTextureName = 'fade-doggo';
+                player.drawTextureName = 'gamer';
+                //player.drawTextureName = 'fade-doggo';
                 
                 player.shootTimer.count();
                 player.waveTimer.count();
@@ -268,22 +268,26 @@ export default class Player {
         let tipRadius = size * 0.5;
         let tipColor = Color.fromVec(color.toVec().scale(0.8));
 
-        this.renderer.fillCircle(tipPosition.add(offset),tipRadius,Color.white.scale(0.5));
+        this.renderer.fillCircle(tipPosition.add(offset),tipRadius,{color: Color.white.scale(0.5)});
 
         //Ring
         
-        this.renderer.fillCircle(this.position.add(offset),size * 1.1,color);
+        this.renderer.fillCircle(this.position.add(offset),size * 1.1,{color: color});
 
         let facingLeft = this.direction.x < 0;
         let textureDirection = facingLeft ? this.direction.scale(size).rot(-90,'Z') : this.direction.scale(size).rot(90,'Z');
 
         // Body
 
+        let zoom = V3.one.scale(Math.sin(this.waveTimer.currValue / 50));
         this.renderer.fillAimedCircle(
             this.position.add(offset),
             textureDirection,
-            color,
-            this.drawTextureName
+            {
+                textureName: this.drawTextureName,
+                UVStart: V3.zero.add(zoom),
+                UVEnd: V3.one.sub(zoom)
+            }
         );
 
         if(this.mobileUI) this.mobileUI.draw();

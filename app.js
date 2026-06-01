@@ -30,7 +30,7 @@ let player = new Player();
 let turret = new Turret().setPosition(new V3(450,100));
 let turret2 = new Turret().setPosition(new V3(850,400)).setBulletType(HomingBullet);
 
-entityManager.addEntities([turret,turret2,player]);
+entityManager.addEntities([turret,turret2,player]);//
 
 let ms = 0;
 

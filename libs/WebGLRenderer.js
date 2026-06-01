@@ -81,10 +81,10 @@ export default class WebGLRenderer {
 
     // local vertex for the geometry points
     vertexBuffer = [];
-    vertexDataSize = 14;// x y z w u v r g b a Rad Typ Emi Tex
+    vertexDataSize = 18;// x y z w u v su sv eu ev r g b a Rad Typ Emi Tex
     quadTypeIndexes = {
         'tri':0,
-        'quad':3,//1,
+        'quad':1,
         'circle':2
     }
     /** @type {Object.<String,Texture>} */
@@ -194,16 +194,22 @@ export default class WebGLRenderer {
         gl.uniform1i(uTextureArrayLoc,3);//
         
         const aPosLoc = this.addVertexAttribute(program,'aPos',4,0);
-        const aColLoc = this.addVertexAttribute(program,'aCol',4,4);
-        const aUVLoc = this.addVertexAttribute(program,'aUV',2,8);
-        const aRadiusLoc = this.addVertexAttribute(program,'aRadius',1,10);
-        const aTypeLoc = this.addVertexAttribute(program,'aType',1,11);
-        const aEmissionLoc = this.addVertexAttribute(program,'aEmission',1,12);
-        const aTextureIndexLoc = this.addVertexAttribute(program,'aTextureIndex',1,13);
+        
+        const aUVLoc = this.addVertexAttribute(program,'aUV',2,4);
+        const aUVStartLoc = this.addVertexAttribute(program,'aUVStart',2,6);
+        const aUVEndLoc = this.addVertexAttribute(program,'aUVEnd',2,8);
+
+        const aColLoc = this.addVertexAttribute(program,'aCol',4,10);
+        const aRadiusLoc = this.addVertexAttribute(program,'aRadius',1,14);
+        const aTypeLoc = this.addVertexAttribute(program,'aType',1,15);
+        const aEmissionLoc = this.addVertexAttribute(program,'aEmission',1,16);
+        const aTextureIndexLoc = this.addVertexAttribute(program,'aTextureIndex',1,17);
         this.attributeLocations = [
             aPosLoc,
             aColLoc,
             aUVLoc,
+            aUVStartLoc,
+            aUVEndLoc,
             aRadiusLoc,
             aTypeLoc,
             aEmissionLoc,
@@ -391,35 +397,55 @@ export default class WebGLRenderer {
 
     // Drawing
 
-    fill(color = Color.black, textureName = 'none') {
+    fill(
+        params = {
+            color: Color.black,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0,
+            width: 1,
+            endWidth: null
+        }
+    ) {
         this.pushQuadToBuffer(
-            new V3(0,this.size.y),
             V3.zero,
-            new V3(this.size.x,0),
+            new V3(0,this.size.y),
             this.size.copy(),
+            new V3(this.size.x,0),
             'quad',
-            color,
-            'none'
+            params
         );
     }
     /**
-     * 
      * @param {V3} p1 
      * @param {V3} p2 
-     * @param {Color} color 
-     * @param {Number} width 
-     * @param {Number} endWidth 
+     * @param {*} params 
      */
-    fillLine(p1,p2,color = Color.white, width = 1, textureName = 'none', endWidth = null) {
-        if(endWidth===null) endWidth = width;
+    fillLine(p1,p2,
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0,
+            width: 1,
+            endWidth: null
+        }
+    ) {
+        if(params.endWidth===null || params.endWidth===undefined) params.endWidth = params.width;
 
         let direction = p2.sub(p1).normalized();
         let rotDirection = new V3(-direction.y,direction.x);
 
-        let point2 = p1.add(rotDirection.scale(width/2));
-        let point1 = p1.add(rotDirection.scale(-width/2));
-        let point3 = p2.add(rotDirection.scale(endWidth/2));
-        let point4 = p2.add(rotDirection.scale(-endWidth/2));
+        let point2 = p1.add(rotDirection.scale(params.width/2));
+        let point1 = p1.add(rotDirection.scale(-params.width/2));
+        let point3 = p2.add(rotDirection.scale(params.endWidth/2));
+        let point4 = p2.add(rotDirection.scale(-params.endWidth/2));
 
         this.pushQuadToBuffer(
             point1,
@@ -427,44 +453,64 @@ export default class WebGLRenderer {
             point3,
             point4,
             'quad',
-            color,
-            textureName
+            params
         );
     }
     /**
      * 
      * @param {V3} center 
      * @param {Number} radius 
-     * @param {Color} color 
+     * @param {*} params 
      */
-    fillCircle(center,radius,color = Color.white, textureName = 'none') {
+    fillCircle(
+        center,radius,
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0
+        }
+    ) {
         let p1 = center.add(new V3(radius,-radius));
         let p2 = center.add(new V3(-radius,-radius));
         let p3 = center.add(new V3(-radius,radius));
         let p4 = center.add(new V3(radius,radius));
 
-        this.pushQuadToBuffer(p2,p3,p4,p1,'circle',color, textureName);
+        this.pushQuadToBuffer(p2,p3,p4,p1,'circle',params);
     }
     /**
      * 
      * @param {V3} center 
      * @param {V3} radius 
-     * @param {Color} color 
+     * @param {*} params 
      */
-    fillAimedCircle(center,radius,color = Color.white, textureName = 'none') {
+    fillAimedCircle(
+        center,radius,
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0
+        }
+    ) {
         let diagonal = radius.add(new V3(-radius.y,radius.x));
         let diagonal90 = new V3(-diagonal.y,diagonal.x);
 
-        let p1 = center.sub(diagonal);
-        let p2 = center.sub(diagonal90);
-        let p3 = center.add(diagonal);
-        let p4 = center.add(diagonal90);
+        let p1 = center.sub(diagonal90);
+        let p2 = center.sub(diagonal);
+        let p3 = center.add(diagonal90);
+        let p4 = center.add(diagonal);
 
         this.pushQuadToBuffer(
             p1,p2,p3,p4,
             'circle',
-            color,
-            textureName
+            params
         );
     }
     /**
@@ -473,27 +519,49 @@ export default class WebGLRenderer {
      * @param {V3} p2 
      * @param {V3} p3 
      * @param {V3} p4 
-     * @param {Color} color 
+     * @param {*} params 
      */
-    fillTriangle(p1,p2,p3,color = Color.white, textureName = 'none') {
-        this.pushQuadToBuffer(p3,p1,p2,p2.copy(),'quad',color,textureName);
+    fillTriangle(
+        p1,p2,p3,
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0
+        }
+    ) {
+        this.pushQuadToBuffer(p1,p2,p3,p3.copy(),'quad',params);
     }
     /**
      * @param {V3} point 
      * @param {V3} size 
-     * @param {Color} color 
+     * @param {*} params 
      */
-    fillRect(point,size,color = Color.white, textureName = 'none') {
+    fillRect(
+        point,
+        size,
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0
+        }
+    ) {
         let start = point;
 
         this.pushQuadToBuffer(
-            new V3(start.x,end.y),
             start,
             new V3(end.x,start.y),
             end,
-            'tri',
-            color,
-            textureName
+            new V3(start.x,end.y),
+            'quad',
+            params
         );
     }
     /**
@@ -501,14 +569,21 @@ export default class WebGLRenderer {
      * @param {V3} center 
      * @param {V3} size 
      * @param {V3} direction 
-     * @param {Color} color 
+     * @param {*} params 
      */
     fillAimedRect(
         center,
         size,
         direction,
-        color = Color.white,
-        textureName = 'none'
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0
+        }
     ) {
         direction = direction.normalized();
         let heightDir = direction.scale(size.y);
@@ -522,10 +597,9 @@ export default class WebGLRenderer {
         let p4 = center.add(widthDir).add(heightDir);
 
         this.pushQuadToBuffer(
-            p2,p3,p4,p1,
+            p4,p1,p2,p3,
             'quad',
-            color,
-            textureName
+            params
         );
     }
     /**
@@ -534,23 +608,46 @@ export default class WebGLRenderer {
      * @param {V3} p2 
      * @param {V3} p3 
      * @param {V3} p4 
-     * @param {Color} color 
+     * @param {*} params 
      */
-    pushQuadToBuffer(p1,p2,p3,p4,type,color = Color.white, textureName, emission = 0.0, cornerRadius = 0.0) {
+    pushQuadToBuffer(
+        p1,p2,p3,p4,
+        type,
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0
+        }
+    ) {
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVEnd: V3.one,
+            flip: null,
+            emission: 0,
+            cornerRadius: 0,
+            ...params
+        };
+
         const typeIndex = this.quadTypeIndexes[type];
         
-        let textureIndex = this.textureArrayIndexes[textureName];
+        let textureIndex = this.textureArrayIndexes[params.textureName];
         if(textureIndex===undefined) {
-            throw new Error(`Texture ${textureName} not found.`);
+            throw new Error(`Texture ${params.textureName} not found.`);
             textureIndex = -1;
         }
 
         //assume p1 is the initial tip, of UV [0,0]
         let points = [p1,p2,p3,p4];
         let UVs = [
-            new V3(0,0),
+            V3.zero,
             new V3(0,1),
-            new V3(1,1),
+            V3.one,
             new V3(1,0)
         ]
         let topTriIndexes = [0,1,2];
@@ -561,6 +658,10 @@ export default class WebGLRenderer {
             let uv = UVs[index];
             point.u = uv.x;
             point.v = uv.y;
+            point.su = params.UVStart.x;
+            point.sv = params.UVStart.y;
+            point.eu = params.UVEnd.x;
+            point.ev = params.UVEnd.y;
             
             // map pixel position to screen space: [0,size] -> [-1,+1]
             let xyz = point.div(this.size).scale(2).sub(V3.one).mult(new V3(1,-1));
@@ -579,15 +680,19 @@ export default class WebGLRenderer {
                 point.y,
                 point.z,
                 point.w,
-                color.r,
-                color.g,
-                color.b,
-                color.a,
                 point.u,
                 point.v,
-                cornerRadius,
+                point.su,
+                point.sv,
+                point.eu,
+                point.ev,
+                params.color.r,
+                params.color.g,
+                params.color.b,
+                params.color.a,
+                params.cornerRadius,
                 typeIndex,
-                emission,
+                params.emission,
                 textureIndex
             ];
         });
@@ -656,16 +761,6 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
-        let wave = 0.5 * (1+Math.sin(frame / 40));
-
-        let fadeOut = this.processToTexture('tint',{
-            uTexture: this.textureBuffers['gamer-doggo'],
-            uScale: Color.white.scale(wave)
-        });
-        this.pushTextureToArray(fadeOut,'fade-doggo',7);
-        //this.runShader('blit',{uTexture:fadeOut});
-        fadeOut.destroy();
-
         this.shaderExecutionBuffer.forEach((exec)=>{
             if(exec.function) exec.function();
             else this.runShader(exec.name,exec.params);
@@ -673,7 +768,7 @@ export default class WebGLRenderer {
         this.shaderExecutionBuffer = [];
         this.runShader('blit',{},true);
     }
-    requestPostProcessing(shaderName,shaderParams, fn) {
+    requestPostProcessing(shaderName,shaderParams, fn = ()=>{}) {
         this.shaderExecutionBuffer.push({
             name: shaderName,
             params: shaderParams,

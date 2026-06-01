@@ -244,7 +244,7 @@ export default class Turret {
     drawTurret(size = this.radius, color = this.color, offset = new V3(0,0)) {
         let drawPosition = this.position.add(offset);
         //Area
-        this.renderer.fillCircle(drawPosition,this.searchRadius,new Color(0.3,0.3,0.3,0.3));
+        this.renderer.fillCircle(drawPosition,this.searchRadius,{color: new Color(0.3,0.3,0.3,0.3)});
 
         //Tip
         let tipColor = color.scale(1.2);
@@ -255,12 +255,12 @@ export default class Turret {
             tipCenter,
             this.tipSize.mult(new V3(1,1+tipRecoil)),
             this.direction,
-            tipColor
+            {color: tipColor}
         );
         
         //Ring
         
-        this.renderer.fillCircle(this.position.add(offset),size * 1.1,color);
+        this.renderer.fillCircle(this.position.add(offset),size * 1.1,{color: color});
 
         let facingLeft = this.direction.x < 0;
         let textureDirection = facingLeft ? this.direction.scale(size).rot(-90,'Z') : this.direction.scale(size).rot(90,'Z');
@@ -268,8 +268,7 @@ export default class Turret {
         this.renderer.fillAimedCircle(
             this.position.add(offset),
             textureDirection,
-            color,
-            this.drawTextureName
+            {textureName: this.drawTextureName}
         );
 
     }

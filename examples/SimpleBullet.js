@@ -81,12 +81,19 @@ export default class Bullet {
                 for(let i=0;i<bullet.trailPositions.length-1;i++) {
                     let nextTrailPos = bullet.trailPositions[i+1];
                     let trailWidth = bullet.radius * i / bullet.trailPositions.length;
-                    bullet.renderer.fillLine(prevTrailPos,nextTrailPos,trailColor,trailWidth);
+                    bullet.renderer.fillLine(
+                        prevTrailPos,
+                        nextTrailPos,
+                        {
+                            color: trailColor,
+                            width: trailWidth
+                        }
+                    );
                     prevTrailPos = nextTrailPos;
                 }
                         
                 //Bullet
-                bullet.renderer.fillCircle(bullet.position, bullet.radius,bullet.color);
+                bullet.renderer.fillCircle(bullet.position, bullet.radius,{color: bullet.color});
             }
         });
         let dying = new State({
@@ -113,7 +120,7 @@ export default class Bullet {
                 let normTime = bullet.dyingTimer.progress();
                 let waveRadius = 1-normTime;
 
-                bullet.renderer.fillCircle(bullet.position, bullet.radius * waveRadius,bullet.color);
+                bullet.renderer.fillCircle(bullet.position, bullet.radius * waveRadius,{color: bullet.color});
 
                 let shardCount = 6;
                 let spreadDistance = 20;
@@ -121,7 +128,7 @@ export default class Bullet {
                     let shardDirection = V3.normToTrig(i/shardCount);
                     let shardOffset = spreadDistance * bullet.dyingTimer.progress();
                     let shardPosition = bullet.position.add(shardDirection.scale(shardOffset))
-                    bullet.renderer.fillCircle(shardPosition,5 * waveRadius,bullet.color);
+                    bullet.renderer.fillCircle(shardPosition,5 * waveRadius,{color: bullet.color});
                 }
             }
         });

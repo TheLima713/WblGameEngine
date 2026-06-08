@@ -326,11 +326,11 @@ export default class Mesh {
         return
         m.pts.forEach(p=>this.pts.push(p))
         m.faces.forEach(f=>{
-        let newf = f
-        newf.i1 = f.i1 + (this.pts.length)
-        newf.i2 = f.i2 + (this.pts.length)
-        newf.i3 = f.i3 + (this.pts.length)
-        this.faces.push(newf)
+            let newf = f
+            newf.i1 = f.i1 + (this.pts.length)
+            newf.i2 = f.i2 + (this.pts.length)
+            newf.i3 = f.i3 + (this.pts.length)
+            this.faces.push(newf)
         })
     }
     move(off){

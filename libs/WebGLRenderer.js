@@ -36,6 +36,12 @@ const shaderParams = {
         uPos: new V3(0.5,0.5),
         uRadius: 5
     },
+    'radialDist': {
+        uPos: new V3(0.5,0.5),
+        uRadius: 5,
+        uPadding: 0,
+        uExponent: 1
+    },
     'mist': {
         strength: 1.0
     },
@@ -133,6 +139,7 @@ export default class WebGLRenderer {
         });
         this.pushTextureToArray(fadeOut,'fade-doggo',7);
         fadeOut.destroy();
+
     }
     destroy() {
         this.gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);//
@@ -761,6 +768,51 @@ export default class WebGLRenderer {
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
     }
     postProcess(frame) {
+        let rad1 = 0.15;
+        let padd1 = rad1 * 0.54;
+
+        let circle = this.processToTexture('radialDist',{
+            uPos: new V3(0.5,0.5),
+            uRadius: rad1,
+            uPadding: padd1,
+            uExponent: 2
+        });
+        let circle2 = this.processToTexture('radialDist',{
+            uPos: new V3(0.3,0.4),
+            uRadius: rad1 * 0.5,
+            uPadding: padd1,
+            uExponent: 2
+        });
+        let circleEnd = this.processToTexture('mergeTexture',{
+            uTexture: circle.bindToIndex(3),
+            uScale: circle.bindToIndex(3),
+            uOffset: circle2.bindToIndex(4),
+            strength: 1
+        });
+
+        let perlin = this.processToTexture('perlin',{
+            octaves: 6,
+            scale: new V3(3,6),
+            offset: new V3(0.3,frame / 240),
+            uValueScale: 0.5,
+            uValueOffset: 0.1
+        });
+
+        let cloud = this.processToTexture('mergeTexture',{
+            uTexture: circleEnd.bindToIndex(3),
+            uScale: perlin.bindToIndex(4),
+            uOffset: perlin.bindToIndex(4),
+            strength: 0.05
+        });
+
+        this.runShader('blit',{uTexture: cloud});
+
+        circle.destroy();
+        circle2.destroy();
+        circleEnd.destroy();
+        perlin.destroy();
+        cloud.destroy();
+        
         this.shaderExecutionBuffer.forEach((exec)=>{
             if(exec.function) exec.function();
             else this.runShader(exec.name,exec.params);

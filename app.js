@@ -30,36 +30,24 @@ let player = new Player();
 let turret = new Turret().setPosition(new V3(450,100));
 let turret2 = new Turret().setPosition(new V3(850,400)).setBulletType(HomingBullet);
 
-entityManager.addEntities([turret,turret2,player]);//
-
-let ms = 0;
+//entityManager.addEntities([turret,turret2,player]);//
 
 entityManager.init({isMobile: isMobile});
 setInterval(()=>{
     frameCounter.count();
-
-    let beforeExec = Date.now();
-
     entityManager.run();
-    
-    let afterExec = Date.now();
 
+    webGLRenderer.fillCircle(new V3(150,150),115);
     webGLRenderer.draw();
     webGLRenderer.postProcess(frameCounter.currValue);
-    
-    let afterPost = Date.now();
-
-    ms += afterPost - afterExec;
-    //console.log(`Average post time: ${ms / frameCounter.currValue}`);
 },1000/60);
 
-window.addEventListener('beforeunload',()=>{
-        webGLRenderer.destroy();
-    }
-);
+window.addEventListener('beforeunload',webGLRenderer.destroy);
 
 // Persio Quests:
 // - Shader pra recortar um layer da mesh 3d e mostrar o 'interior'
 // - Tesselation
 // - Shader node editor
-// Peixes movendo distorcendo por Perlin
+// - Peixes movendo distorcendo por Perlin
+// - Sombra dinamica com normal map
+// - Reflexo dagua

@@ -5,6 +5,7 @@ precision highp float;
 uniform sampler2D uTexture;
 uniform mediump sampler2DArray uTextureArray;
 
+in vec4 vPos;
 in vec2 vUV;
 in vec2 vUVStart;
 in vec2 vUVScale;
@@ -25,8 +26,7 @@ void main() {
         if(vUV.x + vUV.y > 1.0) discard;
     }
     // quad
-    if(vType == 1.0) {
-    }
+    //if(vType == 1.0) {}
     // circle
     if(vType == 2.0) {
         vec2 norm = vUV * 2.0 - 1.0;

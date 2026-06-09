@@ -417,9 +417,9 @@ export default class WebGLRenderer {
     ) {
         this.pushQuadToBuffer(
             V3.zero,
-            new V3(0,this.size.y),
-            this.size.copy(),
-            new V3(this.size.x,0),
+            new V3(0,this.size.y,0),
+            new V3(this.size.x,this.size.y,0),
+            new V3(this.size.x,0,0),
             'quad',
             params
         );
@@ -669,10 +669,10 @@ export default class WebGLRenderer {
             point.ev = params.UVScale.y;
             
             // map pixel position to screen space: [0,size] -> [-1,+1]
-            let xyz = point.div(this.size).scale(2).sub(V3.one).mult(new V3(1,-1));
+            let xyz = point.div(this.size).scale(2).sub(V3.one).mult(new V3(1,-1,1));
             point.x = xyz.x;
             point.y = xyz.y;
-            point.z = 0.0;
+            point.z = xyz.z;
             point.w = 1.0;
             
             return point;
@@ -703,10 +703,10 @@ export default class WebGLRenderer {
         });
 
         topTriIndexes.forEach((index)=>{
-            this.vertexBuffer.push(...bufferLines[index]);
+            this.vertexBuffer.push(bufferLines[index]);
         });
         bottomTriIndexes.forEach((index)=>{
-            this.vertexBuffer.push(...bufferLines[index]);
+            this.vertexBuffer.push(bufferLines[index]);
         });
     }
     getVertexData(index) {
@@ -720,9 +720,11 @@ export default class WebGLRenderer {
         return output;
     }
     sendVertexBuffer(program) {
+        this.vertexBuffer.sort((a,b)=>{return a[2] - b[2]});
+
         this.gl.bufferData(
             this.gl.ARRAY_BUFFER,
-            new Float32Array(this.vertexBuffer),
+            new Float32Array(this.vertexBuffer.flat()),
             this.gl.STATIC_DRAW
         );
 
@@ -734,7 +736,7 @@ export default class WebGLRenderer {
     draw() {
         const gl = this.gl;
 
-        let vertexCount = this.vertexBuffer.length / this.vertexDataSize;
+        let vertexCount = this.vertexBuffer.flat().length / this.vertexDataSize;
         
         gl.activeTexture(gl.TEXTURE3);
         gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.textureArrayBuffer);

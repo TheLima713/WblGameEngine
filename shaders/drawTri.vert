@@ -11,6 +11,7 @@ in float aRadius;
 in float aEmission;
 in float aTextureIndex;
 
+out vec4 vPos;
 out vec2 vUV;
 out vec2 vUVStart;
 out vec2 vUVScale;
@@ -22,6 +23,7 @@ out float vEmission;
 out float vTextureIndex;
 
 void main() {
+    vPos = aPos;
     vUV = vec2(aUV.x,1.0-aUV.y);
     vUVStart = aUVStart;
     vUVScale = aUVScale;
@@ -31,5 +33,5 @@ void main() {
     vEmission = aEmission;
     vTextureIndex = aTextureIndex;
 
-    gl_Position = aPos;
+    gl_Position = vec4(vec2(aPos),0.0,1.0);
 }

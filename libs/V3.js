@@ -6,7 +6,7 @@ export default class V3 {
     z = 0;
     static get zero() { return new V3(0,0,0); }
     static get one() { return new V3(1,1,1); }
-    static get UP() { return new V3(1,1,1); }
+    static get UP() { return new V3(0, 1, 0); }
     static get DOWN() { return new V3(0, -1, 0); }
     static get LEFT() { return new V3(-1, 0, 0); }
     static get RIGHT() { return new V3(1, 0, 0); }

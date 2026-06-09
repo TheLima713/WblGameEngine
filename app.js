@@ -15,7 +15,7 @@ import Counter from "./libs/Counter.js";
 
 console.log('Hello, world!');
 
-let screenSize = new V3(1920,1080).scale(0.75);
+let screenSize = new V3(1920,1080,1000).scale(0.75);
 let webGLRenderer = new WebGLRenderer('canvas',screenSize);
 await webGLRenderer.load();
 let inputManager = new InputManager('canvas');
@@ -54,19 +54,19 @@ trailObj3.fullMesh.textureName = 'fih'
 setInterval(()=>{
     frameCounter.count();
 
-    if(inputManager.keyboard['w']) camera = camera.add(new V3(0,-1,0));
-    if(inputManager.keyboard['s']) camera = camera.add(new V3(0,1,0));
-    if(inputManager.keyboard['d']) camera = camera.add(new V3(-1,0,0));
-    if(inputManager.keyboard['a']) camera = camera.add(new V3(1,0,0));
-    if(inputManager.keyboard['e']) camera = camera.add(new V3(0,0,-1));
-    if(inputManager.keyboard['q']) camera = camera.add(new V3(0,0,1));
+    if(inputManager.keyboard['w']) camera = camera.add(V3.UP);
+    if(inputManager.keyboard['s']) camera = camera.add(V3.DOWN);
+    if(inputManager.keyboard['d']) camera = camera.add(V3.LEFT);
+    if(inputManager.keyboard['a']) camera = camera.add(V3.RIGHT);
+    if(inputManager.keyboard['e']) camera = camera.add(V3.BACK);
+    if(inputManager.keyboard['q']) camera = camera.add(V3.FRONT);
     
-    if(inputManager.keyboard['g']) mesh.rot(1, 'X');
-    if(inputManager.keyboard['t']) mesh.rot(-1, 'X');
-    if(inputManager.keyboard['h']) mesh.rot(1, 'Y');
-    if(inputManager.keyboard['f']) mesh.rot(-1, 'Y');
-    if(inputManager.keyboard['y']) mesh.rot(1, 'Z');
-    if(inputManager.keyboard['r']) mesh.rot(-1, 'Z');
+    if(inputManager.keyboard['g']) trailObj3.rot(1, 'X');
+    if(inputManager.keyboard['t']) trailObj3.rot(-1, 'X');
+    if(inputManager.keyboard['h']) trailObj3.rot(1, 'Y');
+    if(inputManager.keyboard['f']) trailObj3.rot(-1, 'Y');
+    if(inputManager.keyboard['y']) trailObj3.rot(1, 'Z');
+    if(inputManager.keyboard['r']) trailObj3.rot(-1, 'Z');
 
     mesh.rot(-1, 'Y');
     trailObj3.run(1000/60);
@@ -75,6 +75,7 @@ setInterval(()=>{
     mesh.draw(camera);
     trailObj3.draw(camera);
     webGLRenderer.draw();
+    webGLRenderer.postProcess(frameCounter.currValue);
 },1000/60);
 
 window.addEventListener('beforeunload',webGLRenderer.destroy);

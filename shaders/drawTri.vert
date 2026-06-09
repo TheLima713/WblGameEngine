@@ -3,7 +3,7 @@
 in vec4 aPos;
 in vec2 aUV;
 in vec2 aUVStart;
-in vec2 aUVEnd;
+in vec2 aUVScale;
 
 in vec4 aCol;
 in float aType;
@@ -13,7 +13,7 @@ in float aTextureIndex;
 
 out vec2 vUV;
 out vec2 vUVStart;
-out vec2 vUVEnd;
+out vec2 vUVScale;
 
 out vec4 vCol;
 out float vType;
@@ -24,7 +24,7 @@ out float vTextureIndex;
 void main() {
     vUV = vec2(aUV.x,1.0-aUV.y);
     vUVStart = aUVStart;
-    vUVEnd = aUVEnd;
+    vUVScale = aUVScale;
     vCol = aCol;
     vType = aType;
     vRadius = aRadius;

@@ -7,7 +7,7 @@ uniform mediump sampler2DArray uTextureArray;
 
 in vec2 vUV;
 in vec2 vUVStart;
-in vec2 vUVEnd;
+in vec2 vUVScale;
 
 in vec4 vCol;
 in float vType;
@@ -18,7 +18,7 @@ in float vTextureIndex;
 out vec4 fragColor;
 
 void main() {
-    vec2 mappedUV = mix(vUVStart,vUVEnd,vUV);
+    vec2 mappedUV = mix(vUVStart,vUVStart + vUVScale,vUV);
     vec4 textureArrayColor = texture(uTextureArray,vec3(mappedUV,vTextureIndex));
     // tri
     if(vType == 0.0) {

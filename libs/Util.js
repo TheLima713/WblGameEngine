@@ -3,7 +3,7 @@ export default class Util {
     static angToRad(ang) {
         return ang * Math.PI / 180
     }
-    static radToAng(ang) {
+    static radToAng(rad) {
         return rad * 180 / Math.PI
     }
     static rndRange(min,max) {

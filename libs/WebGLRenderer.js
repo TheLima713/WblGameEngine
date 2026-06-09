@@ -7,61 +7,61 @@ const shaderParams = {
     'blit': {},
     'crt': {
         stripWidth: 2
-    },
-    'tint': {
-        uScale: Color.white,
-        uOffset: Color.black
-    },
-    'invert': {
-        subColor: Color.white
-    },
-    'fisheye': {
-        strength: 0.25
-    },
-    'chromaberration': {
-        offset : 0.004
-    },
-    'wave': {
-        strength: 0.01,
-        offset : 0.004,
-        frequency: 111
-    },
-    'perlin': {
-        octaves: 12,
-        offset: new V3(0,0),
-        scale: new V3(1,1),
-        uValueScale: 1
-    },
-    'radialWave': {
-        uPos: new V3(0.5,0.5),
-        uRadius: 5
-    },
-    'radialDist': {
-        uPos: new V3(0.5,0.5),
-        uRadius: 5,
-        uPadding: 0,
-        uExponent: 1
-    },
-    'mist': {
-        strength: 1.0
-    },
-    'displace': {
-        strength: V3.one.scale(0.005),
-        offset: new V3(0,0.01,0)
-    },
-    'edge': {
-        strength: 1
-    },
-    'blur': {
-        uKernelSize: 1
-    },
-    'colorScale': {
-        uColor: Color.white
-    },
-    'mergeTexture': {
-        uLerp: 1
-    },
-    'hsl': {}
+    }
+    //'tint': {
+    //    uScale: Color.white,
+    //    uOffset: Color.black
+    //},
+    //'invert': {
+    //    subColor: Color.white
+    //},
+    //'fisheye': {
+    //    strength: 0.25
+    //},
+    //'chromaberration': {
+    //    offset : 0.004
+    //},
+    //'wave': {
+    //    strength: 0.01,
+    //    offset : 0.004,
+    //    frequency: 111
+    //},
+    //'perlin': {
+    //    octaves: 12,
+    //    offset: new V3(0,0),
+    //    scale: new V3(1,1),
+    //    uValueScale: 1
+    //},
+    //'radialWave': {
+    //    uPos: new V3(0.5,0.5),
+    //    uRadius: 5
+    //},
+    //'radialDist': {
+    //    uPos: new V3(0.5,0.5),
+    //    uRadius: 5,
+    //    uPadding: 0,
+    //    uExponent: 1
+    //},
+    //'mist': {
+    //    strength: 1.0
+    //},
+    //'displace': {
+    //    strength: V3.one.scale(0.005),
+    //    offset: new V3(0,0.01,0)
+    //},
+    //'edge': {
+    //    strength: 1
+    //},
+    //'blur': {
+    //    uKernelSize: 1
+    //},
+    //'colorScale': {
+    //    uColor: Color.white
+    //},
+    //'mergeTexture': {
+    //    uLerp: 1
+    //},
+    //'hsl': {}
 }
 
 export default class WebGLRenderer {
@@ -121,25 +121,23 @@ export default class WebGLRenderer {
     //Shader Loading
     
     async load() {
+        const gl = this.gl;
         await this.loadImages();
         await this.loadDrawTriShader();
 
-        this.readTextureObj =  new Texture(this.gl,this.size,0);
-        this.writeTextureObj = new Texture(this.gl,this.size,1);
-        this.swapBuffer = new Texture(this.gl,this.size,2);
+        this.readTextureObj =  new Texture(gl,this.size,0);
+        this.writeTextureObj = new Texture(gl,this.size,1);
+        this.swapBuffer = new Texture(gl,this.size,2);
         
-        this.gl.enable(this.gl.BLEND);
-        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-        
-        await this.loadShaders();
-        
-        let fadeOut = this.processToTexture('tint',{
-            uTexture: this.textureBuffers['gamer-doggo'],
-            uScale: Color.white
-        });
-        this.pushTextureToArray(fadeOut,'fade-doggo',7);
-        fadeOut.destroy();
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        
+        let shaderLoadTime = Date.now();
+        await this.loadShaders();
+        console.log(`Shaders loaded in ${Date.now() - shaderLoadTime}ms`);
     }
     destroy() {
         this.gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);//
@@ -151,15 +149,15 @@ export default class WebGLRenderer {
     }
     async loadImages() {
         this.initTextureArray(this.size,8);
-        this.textureBuffers['hurt-doggo'] = await Texture.fromPath(this.gl,'./images/doggo.png');
-        this.textureBuffers['gamer-doggo'] = await Texture.fromPath(this.gl,'./images/gamer.webp');
+        //this.textureBuffers['hurt-doggo'] = await Texture.fromPath(this.gl,'./images/doggo.png');
+        //this.textureBuffers['gamer-doggo'] = await Texture.fromPath(this.gl,'./images/gamer.webp');
         
         await this.pushImageToArray('./images/mimir.jpeg','mimir',0);
         await this.pushImageToArray('./images/gamer.webp','gamer',1);
-        await this.pushImageToArray('./images/doggo.png','hurt',2);
-        await this.pushImageToArray('./images/crazy.webp','angry',3);
-        await this.pushImageToArray('./images/lost.webp','lost',4);
-        await this.pushImageToArray('./images/tired.jpg','tired',5);
+        await this.pushImageToArray('./images/fih.jpg','fih',2);
+        //await this.pushImageToArray('./images/crazy.webp','angry',3);
+        //await this.pushImageToArray('./images/lost.webp','lost',4);
+        //await this.pushImageToArray('./images/tired.jpg','tired',5);
         
     }
     async loadShaders() {
@@ -204,7 +202,7 @@ export default class WebGLRenderer {
         
         const aUVLoc = this.addVertexAttribute(program,'aUV',2,4);
         const aUVStartLoc = this.addVertexAttribute(program,'aUVStart',2,6);
-        const aUVEndLoc = this.addVertexAttribute(program,'aUVEnd',2,8);
+        const aUVScaleLoc = this.addVertexAttribute(program,'aUVScale',2,8);
 
         const aColLoc = this.addVertexAttribute(program,'aCol',4,10);
         const aRadiusLoc = this.addVertexAttribute(program,'aRadius',1,14);
@@ -216,7 +214,7 @@ export default class WebGLRenderer {
             aColLoc,
             aUVLoc,
             aUVStartLoc,
-            aUVEndLoc,
+            aUVScaleLoc,
             aRadiusLoc,
             aTypeLoc,
             aEmissionLoc,
@@ -409,7 +407,7 @@ export default class WebGLRenderer {
             color: Color.black,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0,
@@ -436,7 +434,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0,
@@ -475,7 +473,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0
@@ -500,7 +498,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0
@@ -534,7 +532,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0
@@ -554,7 +552,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0
@@ -586,7 +584,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0
@@ -624,7 +622,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0
@@ -634,7 +632,7 @@ export default class WebGLRenderer {
             color: Color.white,
             textureName: 'none',
             UVStart: V3.zero,
-            UVEnd: V3.one,
+            UVScale: V3.one,
             flip: null,
             emission: 0,
             cornerRadius: 0,
@@ -667,8 +665,8 @@ export default class WebGLRenderer {
             point.v = uv.y;
             point.su = params.UVStart.x;
             point.sv = params.UVStart.y;
-            point.eu = params.UVEnd.x;
-            point.ev = params.UVEnd.y;
+            point.eu = params.UVScale.x;
+            point.ev = params.UVScale.y;
             
             // map pixel position to screen space: [0,size] -> [-1,+1]
             let xyz = point.div(this.size).scale(2).sub(V3.one).mult(new V3(1,-1));
@@ -722,20 +720,6 @@ export default class WebGLRenderer {
         return output;
     }
     sendVertexBuffer(program) {
-        /*
-            Each vertex has:
-                aPos [-1,+1]
-                    x,y,z,w
-                aUV [0,1]
-                    x,y
-                aCol [0,1]
-                    r,g,b,a
-            Indexes:
-                aPos: 0-3
-                aUv: 4-5
-                aCol: 6-9
-        */
-
         this.gl.bufferData(
             this.gl.ARRAY_BUFFER,
             new Float32Array(this.vertexBuffer),
@@ -766,53 +750,10 @@ export default class WebGLRenderer {
         gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
 
         [this.writeTextureObj, this.readTextureObj] = [this.readTextureObj, this.writeTextureObj];
+        
+        this.runShader('blit',{},true);
     }
     postProcess(frame) {
-        let rad1 = 0.15;
-        let padd1 = rad1 * 0.54;
-
-        let circle = this.processToTexture('radialDist',{
-            uPos: new V3(0.5,0.5),
-            uRadius: rad1,
-            uPadding: padd1,
-            uExponent: 2
-        });
-        let circle2 = this.processToTexture('radialDist',{
-            uPos: new V3(0.3,0.4),
-            uRadius: rad1 * 0.5,
-            uPadding: padd1,
-            uExponent: 2
-        });
-        let circleEnd = this.processToTexture('mergeTexture',{
-            uTexture: circle.bindToIndex(3),
-            uScale: circle.bindToIndex(3),
-            uOffset: circle2.bindToIndex(4),
-            strength: 1
-        });
-
-        let perlin = this.processToTexture('perlin',{
-            octaves: 6,
-            scale: new V3(3,6),
-            offset: new V3(0.3,frame / 240),
-            uValueScale: 0.5,
-            uValueOffset: 0.1
-        });
-
-        let cloud = this.processToTexture('mergeTexture',{
-            uTexture: circleEnd.bindToIndex(3),
-            uScale: perlin.bindToIndex(4),
-            uOffset: perlin.bindToIndex(4),
-            strength: 0.05
-        });
-
-        this.runShader('blit',{uTexture: cloud});
-
-        circle.destroy();
-        circle2.destroy();
-        circleEnd.destroy();
-        perlin.destroy();
-        cloud.destroy();
-        
         this.shaderExecutionBuffer.forEach((exec)=>{
             if(exec.function) exec.function();
             else this.runShader(exec.name,exec.params);
@@ -1017,6 +958,50 @@ export default class WebGLRenderer {
         })
         fadeOut.destroy();
         shifted.destroy();
+    }
+    cloudEffect(frame) {
+        let rad1 = 0.25;
+        let padd1 = rad1 * 0.2;
+
+        let circle = this.processToTexture('radialDist',{
+            uPos: new V3(0.5,0.5),
+            uRadius: rad1,
+            uPadding: padd1,
+            uExponent: 1
+        });
+        let circle2 = this.processToTexture('radialDist',{
+            uPos: new V3(0.3,0.4),
+            uRadius: rad1 * 0.5,
+            uPadding: padd1,
+            uExponent: 1
+        });
+        let circleEnd = this.processToTexture('mergeTexture',{
+            uTexture: circle.bindToIndex(3),
+            uScale: circle.bindToIndex(3),
+            uOffset: circle2.bindToIndex(4),
+            strength: 1
+        });
+
+        let perlin = this.processToTexture('perlin',{
+            octaves: 6,
+            scale: new V3(4,6),
+            offset: new V3(0.3,frame / 240),
+            uValueScale: 0.5,
+            uValueOffset: 0.3
+        });
+
+        let cloud = this.processToTexture('mist',{
+            uTexture: circleEnd.bindToIndex(3),
+            uNoise: perlin.bindToIndex(4)
+        });
+
+        this.runShader('blit',{uTexture: cloud});
+
+        circle.destroy();
+        circle2.destroy();
+        circleEnd.destroy();
+        perlin.destroy();
+        cloud.destroy();
     }
 }
 

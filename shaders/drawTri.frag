@@ -7,6 +7,7 @@ uniform mediump sampler2DArray uTextureArray;
 
 in vec4 vPos;
 in vec2 vUV;
+in vec4 vNormal;
 in vec2 vUVStart;
 in vec2 vUVScale;
 

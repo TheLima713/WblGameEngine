@@ -87,7 +87,7 @@ export default class WebGLRenderer {
 
     // local vertex for the geometry points
     vertexBuffer = [];
-    vertexDataSize = 18;// x y z w u v su sv eu ev r g b a Rad Typ Emi Tex
+    vertexDataSize = 22;// x y z w u v su sv eu ev r g b a Rad Typ Emi Tex nx ny nz nw
     quadTypeIndexes = {
         'tri':0,
         'quad':1,
@@ -209,6 +209,8 @@ export default class WebGLRenderer {
         const aTypeLoc = this.addVertexAttribute(program,'aType',1,15);
         const aEmissionLoc = this.addVertexAttribute(program,'aEmission',1,16);
         const aTextureIndexLoc = this.addVertexAttribute(program,'aTextureIndex',1,17);
+        const aNormalLoc = this.addVertexAttribute(program,'aNormal',4,18);
+
         this.attributeLocations = [
             aPosLoc,
             aColLoc,
@@ -218,7 +220,8 @@ export default class WebGLRenderer {
             aRadiusLoc,
             aTypeLoc,
             aEmissionLoc,
-            aTextureIndexLoc
+            aTextureIndexLoc,
+            aNormalLoc
         ];
 
         this.programs.drawTri = program;
@@ -535,7 +538,8 @@ export default class WebGLRenderer {
             UVScale: V3.one,
             flip: null,
             emission: 0,
-            cornerRadius: 0
+            cornerRadius: 0,
+            normal: V3.FRONT
         }
     ) {
         this.pushQuadToBuffer(p1,p2,p3,p3.copy(),'quad',params);
@@ -625,7 +629,8 @@ export default class WebGLRenderer {
             UVScale: V3.one,
             flip: null,
             emission: 0,
-            cornerRadius: 0
+            cornerRadius: 0,
+            normal: V3.FRONT
         }
     ) {
         params = {
@@ -636,6 +641,7 @@ export default class WebGLRenderer {
             flip: null,
             emission: 0,
             cornerRadius: 0,
+            normal: V3.FRONT,
             ...params
         };
 
@@ -649,12 +655,13 @@ export default class WebGLRenderer {
 
         //assume p1 is the initial tip, of UV [0,0]
         let points = [p1,p2,p3,p4];
+
         let UVs = [
             V3.zero,
             new V3(0,1),
             V3.one,
             new V3(1,0)
-        ]
+        ];
         let topTriIndexes = [0,1,2];
         let bottomTriIndexes = [3,0,2];
 
@@ -674,6 +681,11 @@ export default class WebGLRenderer {
             point.y = xyz.y;
             point.z = xyz.z;
             point.w = 1.0;
+
+            point.nx = params.normal.x;
+            point.ny = params.normal.y;
+            point.nz = params.normal.z;
+            point.nw = 1;
             
             return point;
         });
@@ -698,7 +710,11 @@ export default class WebGLRenderer {
                 params.cornerRadius,
                 typeIndex,
                 params.emission,
-                textureIndex
+                textureIndex,
+                point.nx,
+                point.ny,
+                point.nz,
+                point.nw
             ];
         });
 
@@ -720,8 +736,6 @@ export default class WebGLRenderer {
         return output;
     }
     sendVertexBuffer(program) {
-        this.vertexBuffer.sort((a,b)=>{return a[2] - b[2]});
-
         this.gl.bufferData(
             this.gl.ARRAY_BUFFER,
             new Float32Array(this.vertexBuffer.flat()),

@@ -2,6 +2,51 @@ import Color from "./Color.js";
 import V3 from "./V3.js"
 import WebGLRenderer from "./WebGLRenderer.js";
 
+export class Quad {
+    points = [];
+    params = {
+        color: Color.white,
+        textureName: 'none',
+        UVStart: V3.zero,
+        UVScale: V3.one,
+        flip: null
+    };
+    /**
+     * @param {V3[]} points 
+     */
+    constructor(
+        points,
+        params = {
+            color: Color.white,
+            textureName: 'none',
+            UVStart: V3.zero,
+            UVScale: V3.one,
+            flip: null
+        }
+    ) {
+        if(points.length!==4) {
+            throw new Error(`Quad without 4 points.`);
+        }
+        this.points = points;
+        this.params = params;
+    }
+    getNormals() {
+        let [p1,p2,p3,p4] = this.points;
+        let n1 = V3.getNormal(p1,p2,p3);
+        let n2 = V3.getNormal(p2,p3,p4);
+        let n3 = V3.getNormal(p3,p4,p1);
+        let n4 = V3.getNormal(p4,p1,p2);
+        return [n1,n2,n3,n4];
+    }
+    /**
+     * @param {WebGLRenderer} renderer 
+     */
+    draw(renderer) {
+        let [p1,p2,p3,p4] = this.points;
+        renderer.pushQuadToBuffer(p1,p2,p3,p4,'quad',this.params);
+    }
+}
+
 class F3 extends V3 {
     normal = V3.zero;
     srcPos = V3.zero;
@@ -45,6 +90,10 @@ export default class Mesh {
     pts = []
     /** @type {F3[]} */
     faces = []
+    
+    /** @type {Quad[]} */
+    quads = [];
+
     center = V3.zero
     up = V3.UP
     front = V3.FRONT
@@ -195,6 +244,15 @@ export default class Mesh {
                     UVSource.add(UVScale),
                     UVScale.scale(-1)
                 ))
+
+                sphere.quads.push(new Quad(
+                    [i1,i2,i3,i4],
+                    {
+                        UVSource: UVSource,
+                        UVScale: UVScale,
+                        textureName: 'mimir'
+                    }
+                ));
             }
         }
         sphere.pts.forEach((pt,idx)=>{
@@ -518,6 +576,11 @@ export default class Mesh {
     */
     draw(cam){
         let drawMode = 'ctx'
+
+        this.quads.forEach((quad)=>{
+            quad.draw(this.renderer);
+        })
+        return;
         this.faces.forEach((face,idx)=>{
             //update normal
             
@@ -542,7 +605,8 @@ export default class Mesh {
                     color: this.color,
                     textureName: this.textureName,
                     UVStart: face.srcPos,
-                    UVScale: face.srcScl
+                    UVScale: face.srcScl,
+                    normal: face.normal
                 }
             );
             return;

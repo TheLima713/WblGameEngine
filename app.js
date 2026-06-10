@@ -8,7 +8,7 @@ libs/manager objs:
 import V3 from "./libs/V3.js";
 import WebGLRenderer from "./libs/WebGLRenderer.js";
 import InputManager from "./libs/InputManager.js";
-import Mesh, { TrailObject } from "./libs/Mesh.js";
+import Mesh, { Quad, TrailObject } from "./libs/Mesh.js";
 import Color from "./libs/Color.js";
 import Util from "./libs/Util.js";
 import Counter from "./libs/Counter.js";
@@ -24,58 +24,74 @@ var frameCounter = new Counter(0);
 var camera = V3.zero;
 camera.z = -1000;
 
-let mesh = Mesh.genSphere(webGLRenderer,new V3(310,110,200),150);
+let mesh = Mesh.genSphere(webGLRenderer,new V3(310,110,150),150,null,32);
 mesh.textureName = 'mimir'
 
 
-let trailObj3 = new TrailObject(webGLRenderer);
+//let trailObj3 = new TrailObject(webGLRenderer);
 
-trailObj3.genMesh(
-    new V3(125,120,110),
-    300,
-    16,
-    (x)=>{
-        return Math.abs(
-            22 * (
-            (Math.sin(4*x))
-            + (Math.sin(4*x))
-            )
-        )
-    },// radiusFn
-    () => { return 0.2 },// followStrFn
-    (head) => {
-        let waveScale = 1
-        return head.front.add(head.up.scl(waveScale)).scl(1/waveScale)
-    }//getNextDirFn
-)
-trailObj3.remeshFromLayers();
-trailObj3.fullMesh.textureName = 'fih'
+//trailObj3.genMesh(
+//    new V3(125,120,110),
+//    300,
+//    16,
+//    (x)=>{
+//        return Math.abs(
+//            22 * (
+//            (Math.sin(4*x))
+//            + (Math.sin(4*x))
+//            )
+//        )
+//    },// radiusFn
+//    () => { return 0.2 },// followStrFn
+//    (head) => {
+//        let waveScale = 1
+//        return head.front.add(head.up.scl(waveScale)).scl(1/waveScale)
+//    }//getNextDirFn
+//)
+//trailObj3.remeshFromLayers();
+//trailObj3.fullMesh.textureName = 'fih'
+
+console.log(new Quad(
+    [
+        new V3(0,0),
+        new V3(0,1),
+        new V3(1,0),
+        new V3(1,1)
+    ],
+    {
+        color: Color.red
+    }
+).getNormals())
+
+let ms = 0;
 
 setInterval(()=>{
+    let temptime = Date.now();
+
     frameCounter.count();
 
     if(inputManager.keyboard['w']) camera = camera.add(V3.UP);
     if(inputManager.keyboard['s']) camera = camera.add(V3.DOWN);
-    if(inputManager.keyboard['d']) camera = camera.add(V3.LEFT);
-    if(inputManager.keyboard['a']) camera = camera.add(V3.RIGHT);
+    if(inputManager.keyboard['d']) camera = camera.add(V3.RIGHT);
+    if(inputManager.keyboard['a']) camera = camera.add(V3.LEFT);
     if(inputManager.keyboard['e']) camera = camera.add(V3.BACK);
     if(inputManager.keyboard['q']) camera = camera.add(V3.FRONT);
     
-    if(inputManager.keyboard['g']) trailObj3.rot(1, 'X');
-    if(inputManager.keyboard['t']) trailObj3.rot(-1, 'X');
-    if(inputManager.keyboard['h']) trailObj3.rot(1, 'Y');
-    if(inputManager.keyboard['f']) trailObj3.rot(-1, 'Y');
-    if(inputManager.keyboard['y']) trailObj3.rot(1, 'Z');
-    if(inputManager.keyboard['r']) trailObj3.rot(-1, 'Z');
+    if(inputManager.keyboard['g']) mesh.rot(1, 'X');
+    if(inputManager.keyboard['t']) mesh.rot(-1, 'X');
+    if(inputManager.keyboard['h']) mesh.rot(1, 'Y');
+    if(inputManager.keyboard['f']) mesh.rot(-1, 'Y');
+    if(inputManager.keyboard['y']) mesh.rot(1, 'Z');
+    if(inputManager.keyboard['r']) mesh.rot(-1, 'Z');
 
-    mesh.rot(-1, 'Y');
-    trailObj3.run(1000/60);
+    mesh.rot(0.1, 'Y');
 
     webGLRenderer.fill();
     mesh.draw(camera);
-    trailObj3.draw(camera);
     webGLRenderer.draw();
-    webGLRenderer.postProcess(frameCounter.currValue);
+
+    ms += Date.now() - temptime;
+    //console.log(ms/frameCounter.currValue)
 },1000/60);
 
 window.addEventListener('beforeunload',webGLRenderer.destroy);

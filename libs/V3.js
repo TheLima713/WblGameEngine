@@ -278,4 +278,19 @@ export default class V3 {
     sum() {
         return this.x + this.y + this.z;
     }
+    /**
+     * 
+     * @param {V3} origin 
+     * @param {V3} p1 
+     * @param {V3} p2 
+     * @param {Boolean} normalize 
+     * @returns 
+     */
+    static getNormal(origin,p1,p2) {
+        let v1 = p1.sub(origin).normalized();
+        let v2 = p2.sub(origin).normalized();
+        let out = v1.cross(v2).normalized();
+
+        return out;
+    }
 }

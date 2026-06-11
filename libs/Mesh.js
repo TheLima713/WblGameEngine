@@ -1,9 +1,9 @@
-import Color from "./Color.js";
-import V3 from "./V3.js"
-import WebGLRenderer from "./WebGLRenderer.js";
+import Color from "/libs/Color.js";
+import V3 from "/libs/V3.js"
+import WebGLRenderer from "/libs/WebGLRenderer.js";
 
 export class Quad {
-    points = [];
+    indexes = [];
     params = {
         color: Color.white,
         textureName: 'none',
@@ -12,10 +12,10 @@ export class Quad {
         flip: null
     };
     /**
-     * @param {V3[]} points 
+     * @param {Number[]} indexes 
      */
     constructor(
-        points,
+        indexes,
         params = {
             color: Color.white,
             textureName: 'none',
@@ -24,33 +24,22 @@ export class Quad {
             flip: null
         }
     ) {
-        if(points.length!==4) {
-            throw new Error(`Quad without 4 points.`);
+        if(indexes.length!==4) {
+            throw new Error(`Quad without 4 indexes.`);
         }
-        this.points = points;
+        this.indexes = indexes;
         this.params = params;
-    }
-    getNormals() {
-        let [p1,p2,p3,p4] = this.points;
-        let n1 = V3.getNormal(p1,p2,p3);
-        let n2 = V3.getNormal(p2,p3,p4);
-        let n3 = V3.getNormal(p3,p4,p1);
-        let n4 = V3.getNormal(p4,p1,p2);
-        return [n1,n2,n3,n4];
-    }
-    /**
-     * @param {WebGLRenderer} renderer 
-     */
-    draw(renderer) {
-        let [p1,p2,p3,p4] = this.points;
-        renderer.pushQuadToBuffer(p1,p2,p3,p4,'quad',this.params);
     }
 }
 
-class F3 extends V3 {
+export class F3 extends V3 {
     normal = V3.zero;
     srcPos = V3.zero;
     srcScl = V3.one;
+    
+    color = Color.white;
+    textureName = 'none';
+
     //when creating Meshes, always follow clockwise order,
     //so the normals point the same way
     
@@ -61,12 +50,15 @@ class F3 extends V3 {
     set i2(v) { this.y = v; }
     set i3(v) { this.z = v; }
 
-    constructor(i1,i2,i3,src,srcPos = V3.zero,srcScl = V3.one){
+    constructor(i1,i2,i3,src,srcPos = V3.zero,srcScl = V3.one, color = Color.white, textureName = 'none'){
         super(i1,i2,i3);
 
         this.src = src;
         this.srcPos = srcPos;
         this.srcScl = srcScl;
+        
+        this.color = color;
+        this.textureName = textureName;
     }
     getNormal(pts,normalize=false) {
         let v1 = pts[this.i1].sub(pts[this.i2])
@@ -230,25 +222,25 @@ export default class Mesh {
                 if(n==LOD-1&&r==LOD) continue
 
                 let UVScale = new V3(wrapX,wrapY).invert();
-                let UVSource = UVScale.mult(new V3(iX,iY));
+                let UVStart = UVScale.mult(new V3(iX,iY));
 
                 sphere.addFace(new F3(
                     i3,i1,i2,
                     src,
-                    UVSource,
+                    UVStart,
                     UVScale
                 ))
                 sphere.addFace(new F3(
                     i2,i4,i3,
                     src,
-                    UVSource.add(UVScale),
+                    UVStart.add(UVScale),
                     UVScale.scale(-1)
                 ))
 
                 sphere.quads.push(new Quad(
-                    [i1,i2,i3,i4],
+                    [i3,i1,i2,i4],
                     {
-                        UVSource: UVSource,
+                        UVStart: UVStart,
                         UVScale: UVScale,
                         textureName: 'mimir'
                     }
@@ -574,13 +566,12 @@ export default class Mesh {
         let col2 = cols[colIdx3].lerp(cols[colIdx4],t1)
         let col = col1.lerp(col2,t2)
     */
+    
+    /**
+     * 
+     * @param {V3} cam 
+     */
     draw(cam){
-        let drawMode = 'ctx'
-
-        this.quads.forEach((quad)=>{
-            quad.draw(this.renderer);
-        })
-        return;
         this.faces.forEach((face,idx)=>{
             //update normal
             
@@ -588,98 +579,57 @@ export default class Mesh {
             let p2 = this.pts[face.i2]
             let p3 = this.pts[face.i3]
 
-            if(p1.z<cam.z) return
-            if(p2.z<cam.z) return
-            if(p3.z<cam.z) return
-
             face.normal = face.getNormal(this.pts,true)
             let avg = p1.add(p2).add(p3).scale(1/3)
+            if(avg.z<cam.z) return;
+
             let dp = (face.normal).dot(avg.sub(cam))
-            if(dp<=0) return
+            if(dp<=0) return;
             
             this.renderer.fillTriangle(
                 this.camProj(p1,cam),
                 this.camProj(p2,cam),
                 this.camProj(p3,cam),
                 {
-                    color: this.color,
-                    textureName: this.textureName,
+                    color: face.color,
+                    textureName: face.textureName,
                     UVStart: face.srcPos,
                     UVScale: face.srcScl,
-                    normal: face.normal
+                    normals: [face.normal,face.normal,face.normal,face.normal]
                 }
             );
-            return;
-
-            //p1 = this.camProj(p1,cam)
-            //p2 = this.camProj(p2,cam)
-            //p3 = this.camProj(p3,cam)
-            
-            let drawNormalsDebug = false
-            if(drawNormalsDebug) {
-                let p4 = this.camProj(avg,camera)
-                let n = avg.add(face.normal.mult(new V3(15,15,15)))
-                let p5 = this.camProj(n,camera)
-                ctx.strokeStyle = '#ff0'
-                ctx.beginPath()
-                ctx.moveTo(p4.x,p4.y)
-                ctx.lineTo(p5.x,p5.y)
-                ctx.stroke()
-            }
-            
-            let maxDist = 10**3
-            let distShade = 0
-            if(avg.z<=maxDist) distShade = 1-(avg.z/maxDist)
-
-            let [r,g,b] = [...face.src]
-            r = Math.round(r*distShade)
-            g = Math.round(g*distShade)
-            b = Math.round(b*distShade)
-            
-            if(drawMode==='cnv') cnv.drawTri(p1.x,p1.y,p2.x,p2.y,p3.x,p3.y,[r,g,b,255])
-            if(drawMode==='ctx') {
-                r = r.toString(16).padStart(2,'0')
-                g = g.toString(16).padStart(2,'0')
-                b = b.toString(16).padStart(2,'0')
-                
-                ctx.beginPath()
-                ctx.moveTo(p1.x,p1.y)
-                ctx.lineTo(p2.x,p2.y)
-                ctx.lineTo(p3.x,p3.y)
-                
-                ctx.fillStyle = '#'+r+g+b
-                ctx.fill()
-            }
-            
-            //this.drawProjTri(face,camera)
         })
-        let drawDirVecsDebug = false
-        if(drawDirVecsDebug) {
-            let c1 = this.camProj(this.center,cam)
-            let p1 = this.camProj(this.center.add(this.up.scale(110)),cam)
-            let p2 = this.camProj(this.center.add(this.front.scale(110)),cam)
-            ctx.strokeStyle = '#f80'
-            ctx.beginPath()
-            ctx.moveTo(c1.x,c1.y)
-            ctx.lineTo(p1.x,p1.y)
-            ctx.stroke()
-            ctx.strokeStyle = '#08f'
-            ctx.beginPath()
-            ctx.moveTo(c1.x,c1.y)
-            ctx.lineTo(p2.x,p2.y)
-            ctx.stroke()
-        }
+        //return;
+        this.quads.forEach((quad)=>{
+            let pts = this.getPoints(quad.indexes);
+            let avgPt = pts.reduce((prev,curr)=>{return prev.add(curr)}).scale(1/4);
+            
+            let normals = this.getQuadNormals(quad);
+            //let normals = pts.map((pt)=>{return pt.sub(cam).normalized()});
+            let avgNormal = normals.reduce((prev,curr)=>{return prev.add(curr)}).normalized();
+            
+            quad.pts = pts;
+            quad.params.normals = normals;
+
+            let camDir = avgPt.sub(cam);
+            let projDiff = avgNormal.dot(camDir);
+            if(projDiff <= 0) return;
+
+            let projPts = pts.map(pt=>this.camProj(pt,cam));
+            this.renderer.pushQuadToBuffer(...projPts,'quad',quad.params);
+        })
     }
     drawPoints(cam) {
         this.pts.forEach((pt,idx)=>{
+            //if(idx > 10) return;
             if(pt.z<cam.z) return
 
-            let maxDist = 10**2
+            let maxDist = 10**4
             let distShade = 0
 
             if(pt.z<=maxDist) distShade = 1-(pt.z/maxDist)
 
-            let maxSize = 1
+            let maxSize = 3
             let pointSize = maxSize * distShade
             
             let projPt = this.camProj(pt,cam)
@@ -742,6 +692,35 @@ export default class Mesh {
         let originOffset = this.renderer.size.scale(0.5);
 
         return originOffset.add(projected.mult(new V3(1,-1,1)))
+    }
+    /**
+     * @param {Number[]} indexes 
+     * @returns {V3[]}
+     */
+    getPoints(indexes) {
+        return indexes.map(i=>this.pts[i]);
+    }
+    /**
+     * @param {Number[]} indexes 
+     * @returns {V3[]}
+     */
+    getPointNormals(indexes) {
+        return indexes.map((i)=>{
+            //subtracting this the inverted way, so that normals pointing to the camera (-Z) return >0 and so on
+            return this.center.sub(this.pts[i]).normalized();
+        });
+    }
+    /**
+     * @param {Quad} quad 
+     * @returns {V3[]}
+     */
+    getQuadNormals(quad) {
+        let [p1,p2,p3,p4] = this.getPoints(quad.indexes);
+        let n1 = V3.getNormal(p2,p1,p4);
+        let n2 = V3.getNormal(p3,p2,p1);
+        let n3 = V3.getNormal(p4,p3,p2);
+        let n4 = V3.getNormal(p1,p4,p3);
+        return [n1,n2,n3,n4];
     }
 }
 export class TrailObject {
@@ -845,18 +824,18 @@ export class TrailObject {
                 let br = (pointCount * (l+1)) + (p + 1) % pointCount//layer neighbor
                 
                 let UVScale = new V3(pointCount,layerCount).invert();
-                let UVSource = UVScale.mult(new V3(p,l));
+                let UVStart = UVScale.mult(new V3(p,l));
 
                 let f1 = new F3(
                     bl,tl,tr,
                     this.src,
-                    UVSource,
+                    UVStart,
                     UVScale
                 )
                 let f2 = new F3(
                     tr,br,bl,
                     this.src,
-                    UVSource.add(UVScale),
+                    UVStart.add(UVScale),
                     UVScale.scale(-1)
                 )
                 this.fullMesh.addFace(f1)

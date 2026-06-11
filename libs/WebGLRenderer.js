@@ -630,7 +630,7 @@ export default class WebGLRenderer {
             flip: null,
             emission: 0,
             cornerRadius: 0,
-            normal: V3.FRONT
+            normals: [V3.FRONT,V3.FRONT,V3.FRONT,V3.FRONT]
         }
     ) {
         params = {
@@ -641,7 +641,7 @@ export default class WebGLRenderer {
             flip: null,
             emission: 0,
             cornerRadius: 0,
-            normal: V3.FRONT,
+            normals: [V3.FRONT,V3.FRONT,V3.FRONT,V3.FRONT],
             ...params
         };
 
@@ -682,16 +682,16 @@ export default class WebGLRenderer {
             point.z = xyz.z;
             point.w = 1.0;
 
-            point.nx = params.normal.x;
-            point.ny = params.normal.y;
-            point.nz = params.normal.z;
+            point.nx = params.normals[index].x;
+            point.ny = params.normals[index].y;
+            point.nz = params.normals[index].z;
             point.nw = 1;
             
             return point;
         });
 
         //passes the same color for each triangle vertex
-        let bufferLines = mappedPoints.map((point)=>{
+        let bufferLines = mappedPoints.map((point,index)=>{
             return [
                 point.x,
                 point.y,
@@ -736,6 +736,8 @@ export default class WebGLRenderer {
         return output;
     }
     sendVertexBuffer(program) {
+        this.vertexBuffer = this.vertexBuffer.sort((a,b)=>{return b[2] - a[2]});
+
         this.gl.bufferData(
             this.gl.ARRAY_BUFFER,
             new Float32Array(this.vertexBuffer.flat()),

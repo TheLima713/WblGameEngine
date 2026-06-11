@@ -37,4 +37,6 @@ void main() {
     fragColor = vCol;
     if(vTextureIndex>=0.0) fragColor = textureArrayColor;
     //fragColor = vec4(mappedUV,0.0,1.0);
+
+    fragColor = vec4(fragColor.xyz * vNormal.z,1.0);
 }

@@ -287,6 +287,10 @@ export default class V3 {
      * @returns 
      */
     static getNormal(origin,p1,p2) {
+        //if(origin.equals(p1)) return V3.zero;
+        //if(origin.equals(p2)) return V3.zero;
+        //if(p1.equals(p2)) return V3.zero;
+
         let v1 = p1.sub(origin).normalized();
         let v2 = p2.sub(origin).normalized();
         let out = v1.cross(v2).normalized();

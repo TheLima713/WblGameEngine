@@ -2,14 +2,14 @@ import WebGLRenderer from "../libs/WebGLRenderer.js";
 import InputManager from "../libs/InputManager.js";
 import EntityManager from "../libs/EntityManager.js";
 import Counter from "../libs/Counter.js";
-import Player from "../examples/SimplePlayer.js";
-import Turret from "../examples/SimpleTurret.js";
-import HomingBullet from "../examples/HomingBullet.js";
+import Player from "./SimplePlayer.js";
+import Turret from "./SimpleTurret.js";
+import HomingBullet from "./HomingBullet.js";
 import V3 from "../libs/V3.js";
 
-export default class SimpleShooter {
+export default class SimpleGame {
     constructor(){
-        console.log('Hello, SimpleShooter!');
+        console.log('Hello, SimpleGame!');
 
         this.webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080).scale(0.75));
 

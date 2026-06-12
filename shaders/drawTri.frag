@@ -27,7 +27,7 @@ void main() {
         if(vUV.x + vUV.y > 1.0) discard;
     }
     // quad
-    //if(vType == 1.0) {}
+        //if(vType == 1.0) {}
     // circle
     if(vType == 2.0) {
         vec2 norm = vUV * 2.0 - 1.0;
@@ -36,7 +36,10 @@ void main() {
     //textured quad
     fragColor = vCol;
     if(vTextureIndex>=0.0) fragColor = textureArrayColor;
-    //fragColor = vec4(mappedUV,0.0,1.0);
+    
 
     fragColor = vec4(fragColor.xyz * vNormal.z,1.0);
+    //fragColor = vec4(mappedUV,0.0,1.0);
+    //fragColor = vec4(vNormal.xyz,1.0);
+    //fragColor = vec4(vec3(vPos.z),1.0);
 }

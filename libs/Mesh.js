@@ -1,6 +1,7 @@
-import Color from "/libs/Color.js";
-import V3 from "/libs/V3.js"
-import WebGLRenderer from "/libs/WebGLRenderer.js";
+import V3 from "./V3.js";
+import Color from "./Color.js";
+
+import WebGLRenderer from "./WebGLRenderer.js";
 
 export class Quad {
     indexes = [];
@@ -583,8 +584,7 @@ export default class Mesh {
             let avg = p1.add(p2).add(p3).scale(1/3)
             if(avg.z<cam.z) return;
 
-            let dp = (face.normal).dot(avg.sub(cam))
-            if(dp<=0) return;
+            //if((face.normal).dot(avg.sub(cam))<=0) return;
             
             this.renderer.fillTriangle(
                 this.camProj(p1,cam),
@@ -611,9 +611,9 @@ export default class Mesh {
             quad.pts = pts;
             quad.params.normals = normals;
 
-            let camDir = avgPt.sub(cam);
-            let projDiff = avgNormal.dot(camDir);
-            if(projDiff <= 0) return;
+            //let camDir = avgPt.sub(cam);
+            //let projDiff = avgNormal.dot(camDir);
+            //if(projDiff <= 0) return;
 
             let projPts = pts.map(pt=>this.camProj(pt,cam));
             this.renderer.pushQuadToBuffer(...projPts,'quad',quad.params);
@@ -688,10 +688,12 @@ export default class Mesh {
     
         let diff = point.sub(cam);
         let projected = diff.scale(-cam.z/diff.z);
+        projected.z = point.z / this.renderer.size.z;
 
         let originOffset = this.renderer.size.scale(0.5);
+        let output = originOffset.add(projected.mult(new V3(1,-1,1)))
 
-        return originOffset.add(projected.mult(new V3(1,-1,1)))
+        return output;
     }
     /**
      * @param {Number[]} indexes 
@@ -720,6 +722,11 @@ export default class Mesh {
         let n2 = V3.getNormal(p3,p2,p1);
         let n3 = V3.getNormal(p4,p3,p2);
         let n4 = V3.getNormal(p1,p4,p3);
+        
+        if(p3.equals(p4)) {
+            n3 = V3.getNormal(p1,p3,p2);
+            n4 = V3.getNormal(p1,p3,p2);
+        }
         return [n1,n2,n3,n4];
     }
 }

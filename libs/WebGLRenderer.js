@@ -130,10 +130,12 @@ export default class WebGLRenderer {
         this.swapBuffer = new Texture(gl,this.size,2);
         
         gl.enable(gl.BLEND);
+        gl.disable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
         gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
+        gl.depthFunc(gl.LESS);
+        gl.depthMask(true);
         
         let shaderLoadTime = Date.now();
         await this.loadShaders();
@@ -736,8 +738,6 @@ export default class WebGLRenderer {
         return output;
     }
     sendVertexBuffer(program) {
-        this.vertexBuffer = this.vertexBuffer.sort((a,b)=>{return b[2] - a[2]});
-
         this.gl.bufferData(
             this.gl.ARRAY_BUFFER,
             new Float32Array(this.vertexBuffer.flat()),
@@ -758,7 +758,8 @@ export default class WebGLRenderer {
         gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.textureArrayBuffer);
         
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.writeTextureObj.buffer);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.clearDepth(1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         gl.useProgram(this.programs.drawTri);
         gl.bindVertexArray(this.drawVertexArray);
@@ -1031,6 +1032,8 @@ export class Texture {
     texture;
     /** @type {WebGLFramebuffer} */
     buffer;
+    /** @type {WebGLRenderbuffer} */
+    depthBuffer;
     /**
      * 
      * @param {WebGL2RenderingContext} gl 
@@ -1076,8 +1079,27 @@ export class Texture {
             0
         );
 
+        this.depthBuffer = gl.createRenderbuffer();
+
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.depthBuffer);
+
+        gl.renderbufferStorage(
+            gl.RENDERBUFFER,
+            gl.DEPTH_COMPONENT16,
+            size.x,
+            size.y
+        );
+
+        gl.framebufferRenderbuffer(
+            gl.FRAMEBUFFER,
+            gl.DEPTH_ATTACHMENT,
+            gl.RENDERBUFFER,
+            this.depthBuffer
+        );
+        
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
     }
     static async fromPath(gl, url) {
         const imageData = await new Promise((resolve,reject)=>{

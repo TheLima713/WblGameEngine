@@ -4,8 +4,12 @@ import Counter from "/libs/Counter.js";
 import V3 from "/libs/V3.js";
 import Mesh from "/libs/Mesh.js";
 import BlenderObjectProcessor from "../../libs/BlenderObjectProcessor.js";
+import Color from "../../libs/Color.js";
 
 export default class SimpleMeshRendering {
+    /** @type {WebGLRenderer} */
+    webGLRenderer;
+
     moveScale = 5;
     moveKeys = ['w','a','s','d','q','e']
     rotateKeys = ['t','f','g','h','r','y']
@@ -28,7 +32,7 @@ export default class SimpleMeshRendering {
     constructor(){
         console.log('Hello, SimpleMeshRendering!');
 
-        this.webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080).scale(0.75));
+        this.webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080,100).scale(0.75));
 
         this.inputManager = new InputManager('canvas');
         this.frameCounter = new Counter(0);
@@ -46,7 +50,12 @@ export default class SimpleMeshRendering {
     }
     async load(){
         await this.webGLRenderer.load();
-        this.mesh = await this.bop.translateObjFileToMesh('/data/objs/bee.obj');
+        this.mesh = await this.bop.translateObjFileToMesh('/data/objs/bee');
+
+        if(this.mesh===null) {
+            console.log(`Failed to load object.`);
+            return;
+        }
         this.mesh.move(new V3(0,0,100));
         this.mesh.scale(V3.one.scale(100));
     }
@@ -58,15 +67,16 @@ export default class SimpleMeshRendering {
             else return V3.zero;
         }).reduce((prev,curr)=>{
             return prev.add(curr);
-        }).scale(this.moveScale * -1);
+        }).scale(this.moveScale);
 
-        this.camera = this.camera.add(moveInput);
+        this.mesh.move(moveInput);
         this.rotateKeys.forEach((key)=>{
             if(this.inputManager.keyboard[key]) this.mesh.rot(...this.rotateMap[key]);
         })
     }
     draw(){
-        this.mesh.draw(this.camera);
+
+        this.mesh?.draw(this.camera);
         //this.mesh.drawPoints(this.camera);
         this.webGLRenderer.draw();
     }

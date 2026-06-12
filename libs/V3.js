@@ -121,7 +121,8 @@ export default class V3 {
      * @returns {this}
      */
     normalized() {
-        return this.scale(1/this.mag())
+        if(this.mag()===0) return V3.zero;
+        return this.scale(1/this.mag());
     }
     /**
      * @param {V3,Color} v1 

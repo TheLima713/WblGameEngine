@@ -26,7 +26,7 @@ export default class BlenderObjectProcessor {
         }
 
         let data = await response.text();
-        let lines = data.split('\n');
+        let lines = data.replaceAll('\t','').replaceAll('\r','').split('\n');
 
         let materials = {};
         let newColorKey = '';
@@ -63,13 +63,21 @@ export default class BlenderObjectProcessor {
             return null;
         }
 
+
         let data = await response.text();
-        let lines = data.split('\n');
+        let lines = data.replaceAll('\t','').replaceAll('\r','').replaceAll('  ',' ').split('\n');
+
+        console.log(materials,data);
 
         let verticeLines = lines.filter(line=>line.startsWith('v '));
         let uvLines = lines.filter(line=>line.startsWith('vt '));
         let normalLines = lines.filter(line=>line.startsWith('vn '));
         let faceLines = lines.filter(line=>line.startsWith('f ') || line.startsWith('usemtl '));
+
+        console.log(verticeLines.length);
+        console.log(uvLines.length);
+        console.log(normalLines.length);
+        console.log(faceLines.length);
 
         let mesh = new Mesh(this.renderer,new V3(0,0,0));
         mesh.addPt(new V3(0,0,0));
@@ -81,6 +89,8 @@ export default class BlenderObjectProcessor {
                 parseFloat(values[2]),
                 parseFloat(values[3])
             );
+
+            console.log(line,values)
 
             mesh.addPt(point);
         })
@@ -103,9 +113,9 @@ export default class BlenderObjectProcessor {
             if(line.startsWith('f ')) {
                 let indexes = line.replace('f ','').split(' ');
                 let values = indexes.map(index=>index.split('/'));
-                let normal = normalLines[index] || V3.zero;
+                let normal = normalLines[index] || V3.FRONT;
 
-                if(values.length!==4) {
+                if(values.length<4) {
                     values[3] = values[2];
                 }
 
@@ -117,17 +127,20 @@ export default class BlenderObjectProcessor {
                         parseInt(values[3][0])
                     ],
                     {
-                        uvLinestart: V3.zero,
-                        uvLinescale: V3.one,
+                        UVStart: V3.zero,
+                        UVScale: V3.one,
                         color: currColor,
                         textureName: 'none',
-                        normalLines: [normal,normal,normal,normal]
+                        normals: [normal,normal,normal,normal]
                     }
                 )
                 mesh.quads.push(quad)
                 return;
             }
         })
+
+        console.log(mesh);
+
         return mesh;
     }
 }

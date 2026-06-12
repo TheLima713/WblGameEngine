@@ -1,10 +1,10 @@
-import WebGLRenderer from "/libs/WebGLRenderer.js";
-import InputManager from "/libs/InputManager.js";
-import Counter from "/libs/Counter.js";
-import V3 from "/libs/V3.js";
-import Mesh from "/libs/Mesh.js";
+import WebGLRenderer from "../../libs/WebGLRenderer.js";
+import InputManager from "../../libs/InputManager.js";
+import Counter from "../../libs/Counter.js";
+import Mesh from "../../libs/Mesh.js";
 import BlenderObjectProcessor from "../../libs/BlenderObjectProcessor.js";
 import Color from "../../libs/Color.js";
+import V3 from "../../libs/V3.js";
 
 export default class SimpleMeshRendering {
     /** @type {WebGLRenderer} */
@@ -32,7 +32,7 @@ export default class SimpleMeshRendering {
     constructor(){
         console.log('Hello, SimpleMeshRendering!');
 
-        this.webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080,100).scale(0.75));
+        this.webGLRenderer = new WebGLRenderer('canvas',new V3(1920,1080,1000).scale(0.75));
 
         this.inputManager = new InputManager('canvas');
         this.frameCounter = new Counter(0);
@@ -56,8 +56,8 @@ export default class SimpleMeshRendering {
             console.log(`Failed to load object.`);
             return;
         }
-        this.mesh.move(new V3(0,0,100));
-        this.mesh.scale(V3.one.scale(100));
+        this.mesh.move(new V3(0,0,300));
+        this.mesh.scale(V3.one.scale(25));
     }
     run(){
         this.frameCounter.count();
@@ -75,8 +75,9 @@ export default class SimpleMeshRendering {
         })
     }
     draw(){
-
-        this.mesh?.draw(this.camera);
+        //this.webGLRenderer.fill();
+        this.webGLRenderer.fillCircle(new V3(100,50,10),15,{color: Color.red});
+        this.mesh.draw(this.camera);
         //this.mesh.drawPoints(this.camera);
         this.webGLRenderer.draw();
     }

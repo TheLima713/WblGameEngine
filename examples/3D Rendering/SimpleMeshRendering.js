@@ -48,6 +48,22 @@ export default class SimpleMeshRendering {
         
         window.addEventListener('beforeunload',this.webGLRenderer.destroy);
     }
+    loop(dt, frame = 0) {
+        let ms = Date.now()
+        
+        this.run();
+        this.draw();
+
+        let newDt = Date.now() - ms;
+        //console.log(`FPS: ${1000 / newDt}`);
+
+        requestAnimationFrame(()=>{
+            this.loop(
+                newDt,
+                frame+1
+            );
+        });
+    }
     async load(){
         await this.webGLRenderer.load();
         this.mesh = await this.bop.translateObjFileToMesh('/data/objs/bee');
@@ -57,7 +73,7 @@ export default class SimpleMeshRendering {
             return;
         }
         this.mesh.move(new V3(0,0,300));
-        this.mesh.scale(V3.one.scale(25));
+        this.mesh.scale(V3.one.scale(10));
     }
     run(){
         this.frameCounter.count();
@@ -75,10 +91,7 @@ export default class SimpleMeshRendering {
         })
     }
     draw(){
-        //this.webGLRenderer.fill();
-        this.webGLRenderer.fillCircle(new V3(100,50,10),15,{color: Color.red});
         this.mesh.draw(this.camera);
-        //this.mesh.drawPoints(this.camera);
         this.webGLRenderer.draw();
     }
 }

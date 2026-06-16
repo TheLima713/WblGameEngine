@@ -313,8 +313,10 @@ export default class WebGLRenderer {
 
         gl.bindTexture(gl.TEXTURE_2D_ARRAY,null);
     }
-    async pushImageToArray(path,name,index) {
+    async pushImageToArray(path,name,index = null) {
         const gl = this.gl;
+
+        if(index===null) index = Object.keys(this.textureArrayIndexes).length;
 
         var imageData = await new Promise((resolve,reject)=>{
             const image = new Image();
@@ -632,7 +634,8 @@ export default class WebGLRenderer {
             flip: null,
             emission: 0,
             cornerRadius: 0,
-            normals: [V3.FRONT,V3.FRONT,V3.FRONT,V3.FRONT]
+            normals: [V3.FRONT,V3.FRONT,V3.FRONT,V3.FRONT],
+            uvs: [V3.zero,new V3(0,1),V3.one,new V3(1,0)]
         }
     ) {
         params = {
@@ -644,6 +647,7 @@ export default class WebGLRenderer {
             emission: 0,
             cornerRadius: 0,
             normals: [V3.FRONT,V3.FRONT,V3.FRONT,V3.FRONT],
+            uvs: [V3.zero,new V3(0,1),V3.one,new V3(1,0)],
             ...params
         };
 
@@ -658,18 +662,13 @@ export default class WebGLRenderer {
         //assume p1 is the initial tip, of UV [0,0]
         let points = [p1,p2,p3,p4];
 
-        let UVs = [
-            V3.zero,
-            new V3(0,1),
-            V3.one,
-            new V3(1,0)
-        ];
+        //let UVs = [V3.zero,new V3(0,1),V3.one,new V3(1,0)];
         let topTriIndexes = [0,1,2];
         let bottomTriIndexes = [3,0,2];
 
         let mappedPoints = points.map((point, index)=>{
             // map pixel position to UV space: [0,size] -> [0,1]
-            let uv = UVs[index];
+            let uv = params.uvs[index];
             point.u = uv.x;
             point.v = uv.y;
             point.su = params.UVStart.x;

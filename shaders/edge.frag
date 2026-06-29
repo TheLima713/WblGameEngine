@@ -3,15 +3,17 @@
 precision highp float;
 
 uniform vec4 uResolution;
+uniform vec4 uOrigSize;
 uniform sampler2D uTexture;
 uniform float strength;
+uniform float uAltMask;
 
 in vec2 vUV;
 out vec4 fragColor;
 
 
 vec4 getNbor(vec2 offset) {
-    vec2 one = 1.0 / vec2(uResolution);
+    vec2 one = 1.0 / vec2(uOrigSize);
 
     return texture(uTexture,vUV + one * offset);
 }
@@ -46,7 +48,13 @@ void main() {
         }
     }
 
+    accum = (accum + 1.0) / 2.0;
+
     vec4 final = vec4(accum,0.0,1.0) * strength;
+
+    if(uAltMask == 1.0) {
+        final = vec4(accum.y,accum.x,0.0,1.0) * strength;
+    }
 
     fragColor = final;
 }

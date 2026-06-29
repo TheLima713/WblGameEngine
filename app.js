@@ -5,9 +5,9 @@ libs/manager objs:
 - >Scene
 */
 
-import SimpleMeshRendering from "./examples/3D Rendering/SimpleMeshRendering.js";
+import MovingTextureApp from "./examples/Image Processing/MovingTextureApp.js";
 
-let prog = new SimpleMeshRendering();
+let prog = new MovingTextureApp();
 await prog.load()
 prog.loop()
 

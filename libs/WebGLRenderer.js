@@ -7,11 +7,15 @@ const shaderParams = {
     'blit': {},
     'crt': {
         stripWidth: 2
-    }
-    //'tint': {
-    //    uScale: Color.white,
-    //    uOffset: Color.black
-    //},
+    },
+    'edge': {
+        strength: 1,
+        uResolution: V3.zero
+    },
+    'tint': {
+        uScale: Color.white,
+        uOffset: Color.black
+    },
     //'invert': {
     //    subColor: Color.white
     //},
@@ -36,32 +40,29 @@ const shaderParams = {
     //    uPos: new V3(0.5,0.5),
     //    uRadius: 5
     //},
-    //'radialDist': {
-    //    uPos: new V3(0.5,0.5),
-    //    uRadius: 5,
-    //    uPadding: 0,
-    //    uExponent: 1
-    //},
-    //'mist': {
-    //    strength: 1.0
-    //},
-    //'displace': {
-    //    strength: V3.one.scale(0.005),
-    //    offset: new V3(0,0.01,0)
-    //},
-    //'edge': {
-    //    strength: 1
-    //},
-    //'blur': {
-    //    uKernelSize: 1
-    //},
-    //'colorScale': {
-    //    uColor: Color.white
-    //},
-    //'mergeTexture': {
-    //    uLerp: 1
-    //},
-    //'hsl': {}
+    'radialDist': {
+        uPos: new V3(0.5,0.5),
+        uRadius: 5,
+        uPadding: 0,
+        uExponent: 1
+    },
+    'mist': {
+        strength: 1.0
+    },
+    'displace': {
+        strength: V3.one.scale(0.005),
+        offset: new V3(0,0.01,0)
+    },
+    'blur': {
+        uKernelSize: 1
+    },
+    'colorScale': {
+        uColor: Color.white
+    },
+    'mergeTexture': {
+        uLerp: 1
+    },
+    'hsl': {}
 }
 
 export default class WebGLRenderer {
@@ -142,7 +143,7 @@ export default class WebGLRenderer {
         console.log(`Shaders loaded in ${Date.now() - shaderLoadTime}ms`);
     }
     destroy() {
-        this.gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);//
+        this.gl.bindTexture(this.gl.TEXTURE_2D_ARRAY, null);//
 
         this.readTextureObj.destroy();
         this.writeTextureObj.destroy();
@@ -160,7 +161,6 @@ export default class WebGLRenderer {
         //await this.pushImageToArray('./images/crazy.webp','angry',3);
         //await this.pushImageToArray('./images/lost.webp','lost',4);
         //await this.pushImageToArray('./images/tired.jpg','tired',5);
-        
     }
     async loadShaders() {
         const shaders = await Promise.all(
@@ -279,7 +279,7 @@ export default class WebGLRenderer {
         this.gl.enableVertexAttribArray(aAtribLoc);
         return aAtribLoc;
     }
-    initTextureArray(size, length = 4) {
+    initTextureArray(size, length = 8) {
         const gl = this.gl;
         this.textureArraySize = size;
 
@@ -332,6 +332,9 @@ export default class WebGLRenderer {
             console.log(`Re-scaled image "${name}" from [${size.x + ',' + size.y}] to [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
         }
 
+        let tex = new Texture(gl,this.textureArraySize,index);
+        tex.setData(imageData);
+
         gl.activeTexture(gl.TEXTURE3);
         gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.textureArrayBuffer);
         
@@ -355,6 +358,7 @@ export default class WebGLRenderer {
         this.textureArrayIndexes[name] = index;
 
         gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+        return tex;
     }
     /**
      * 
@@ -367,7 +371,7 @@ export default class WebGLRenderer {
         const size = texture.size;
 
         if(!size.equals(this.textureArraySize)) {
-            imageData = this.scaleImage(imageData,this.textureArraySize);
+            texture.imageData = this.scaleImage(texture.imageData,this.textureArraySize);
             console.log(`Re-scaled image "${name}" from [${size.x + ',' + size.y}] to [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
         }
 
@@ -567,12 +571,13 @@ export default class WebGLRenderer {
         }
     ) {
         let start = point;
+        let end = start.add(size);
 
         this.pushQuadToBuffer(
             start,
-            new V3(end.x,start.y),
-            end,
             new V3(start.x,end.y),
+            end,
+            new V3(end.x,start.y),
             'quad',
             params
         );
@@ -828,6 +833,19 @@ export default class WebGLRenderer {
         for(let i = 0; i < pixels.length; i++) imageData.data[i] = pixels[i];
         return imageData;
     }
+    async getImageSize(path) {
+        const gl = this.gl;
+
+        var imageData = await new Promise((resolve,reject)=>{
+            const image = new Image();
+            image.onload = () => {
+                resolve(image);
+            };
+            image.src = path;
+        })
+        const size = new V3(imageData.width,imageData.height);
+        return size;
+    }
 
     // Custom shader sequences
     applyWaterDistortion(frame,octaves = 3,strength = 0.01, color = new Color(0.1,0.3,0.8)) {
@@ -1068,7 +1086,6 @@ export class Texture {
             null
         );
 
-        this.buffer = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.buffer);
         gl.framebufferTexture2D(
             gl.FRAMEBUFFER,
@@ -1126,6 +1143,7 @@ export class Texture {
     }
     setData(image) {
         const gl = this.gl;
+        this.imageData = image;
     
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         
@@ -1144,5 +1162,6 @@ export class Texture {
     destroy() {
         this.gl.deleteTexture(this.texture);
         this.gl.deleteFramebuffer(this.buffer);
+        this.gl.deleteRenderbuffer(this.depthBuffer);
     }
 }

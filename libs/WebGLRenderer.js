@@ -16,6 +16,11 @@ const shaderParams = {
         uScale: Color.white,
         uOffset: Color.black
     },
+    'edge':{
+        uOrigSize,
+        strength: 1,
+        uAltMask: 0,
+    },
     'invert': {
         subColor: Color.white
     },

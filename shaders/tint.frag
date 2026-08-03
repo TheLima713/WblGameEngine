@@ -11,7 +11,7 @@ out vec4 fragColor;
 
 void main() {
     vec4 base = texture(uTexture, vUV);
-    vec4 pixel = (base * uScale) + uOffset;
+    vec4 pixel = fract((base * uScale) + uOffset);
 
     fragColor = pixel;
 }

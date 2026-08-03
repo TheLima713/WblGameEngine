@@ -3,7 +3,6 @@
 precision highp float;
 
 uniform sampler2D uTexture;
-uniform float stripWidth;
 
 in vec2 vUV;
 out vec4 fragColor;

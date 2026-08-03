@@ -7,14 +7,18 @@ const shaderParams = {
     'blit': {},
     'crt': {
         stripWidth: 2
-    }
-    //'tint': {
-    //    uScale: Color.white,
-    //    uOffset: Color.black
-    //},
-    //'invert': {
-    //    subColor: Color.white
-    //},
+    },
+    'colorScale': {
+        uColor: Color.white
+    },
+    'hsl': {},
+    'tint': {
+        uScale: Color.white,
+        uOffset: Color.black
+    },
+    'invert': {
+        subColor: Color.white
+    },
     //'fisheye': {
     //    strength: 0.25
     //},
@@ -55,13 +59,9 @@ const shaderParams = {
     //'blur': {
     //    uKernelSize: 1
     //},
-    //'colorScale': {
-    //    uColor: Color.white
-    //},
     //'mergeTexture': {
     //    uLerp: 1
     //},
-    //'hsl': {}
 }
 
 export default class WebGLRenderer {
@@ -154,9 +154,9 @@ export default class WebGLRenderer {
         //this.textureBuffers['hurt-doggo'] = await Texture.fromPath(this.gl,'./images/doggo.png');
         //this.textureBuffers['gamer-doggo'] = await Texture.fromPath(this.gl,'./images/gamer.webp');
         
-        await this.pushImageToArray('./images/mimir.jpeg','mimir',0);
-        await this.pushImageToArray('./images/gamer.webp','gamer',1);
-        await this.pushImageToArray('./images/fih.jpg','fih',2);
+        //await this.pushImageToArray('./images/mimir.jpeg','mimir',0);
+        //await this.pushImageToArray('./images/gamer.webp','gamer',1);
+        //await this.pushImageToArray('./images/fih.jpg','fih',2);
         //await this.pushImageToArray('./images/crazy.webp','angry',3);
         //await this.pushImageToArray('./images/lost.webp','lost',4);
         //await this.pushImageToArray('./images/tired.jpg','tired',5);
@@ -281,7 +281,7 @@ export default class WebGLRenderer {
     }
     initTextureArray(size, length = 4) {
         const gl = this.gl;
-        this.textureArraySize = size;
+        this.textureSize = size;
 
         const zeroData = new Uint8Array(size.x * size.y * length * 4); 
 
@@ -327,49 +327,29 @@ export default class WebGLRenderer {
         })
         const size = new V3(imageData.width,imageData.height);
 
-        if(!size.equals(this.textureArraySize)) {
-            imageData = this.scaleImage(imageData,this.textureArraySize);
-            console.log(`Re-scaled image "${name}" from [${size.x + ',' + size.y}] to [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
+        if(!size.equals(this.textureSize)) {
+            imageData = this.scaleImage(imageData,this.textureSize);
+            console.log(`Re-scaled image "${name}" from [${size.x + ',' + size.y}] to [${this.textureSize.x + ',' + this.textureSize.y}]`);
         }
 
-        gl.activeTexture(gl.TEXTURE3);
-        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.textureArrayBuffer);
+        let texture = new Texture(this.gl,this.textureSize);
+        texture.setData(imageData);
+
+        this.pushTextureToArray(texture,name,index);
         
-        gl.texSubImage3D(
-            gl.TEXTURE_2D_ARRAY,
-
-            0,
-
-            0,0,index,
-
-            this.textureArraySize.x,
-            this.textureArraySize.y,
-            1,
-
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-
-            imageData
-        );
-        
-        this.textureArrayIndexes[name] = index;
-
-        gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+        return texture;
     }
     /**
      * 
      * @param {Texture} texture 
      * @param {Number} index 
      */
-    async pushTextureToArray(texture,name,index) {
+    async pushTextureToArray(texture,name,index = null) {
         const gl = this.gl;
         
-        const size = texture.size;
+        if(index===null) index = Object.keys(this.textureArrayIndexes).length;
 
-        if(!size.equals(this.textureArraySize)) {
-            imageData = this.scaleImage(imageData,this.textureArraySize);
-            console.log(`Re-scaled image "${name}" from [${size.x + ',' + size.y}] to [${this.textureArraySize.x + ',' + this.textureArraySize.y}]`);
-        }
+        const size = texture.size;
 
         gl.bindFramebuffer(gl.FRAMEBUFFER,texture.buffer);
 
@@ -383,8 +363,8 @@ export default class WebGLRenderer {
 
             0,0,index,
             0,0,
-            this.textureArraySize.x,
-            this.textureArraySize.y
+            this.textureSize.x,
+            this.textureSize.y
         );
         
         this.textureArrayIndexes[name] = index;
@@ -406,7 +386,6 @@ export default class WebGLRenderer {
 
         return canvas;
     }
-
     // Drawing
 
     fill(
@@ -567,6 +546,7 @@ export default class WebGLRenderer {
         }
     ) {
         let start = point;
+        let end = point.add(size);
 
         this.pushQuadToBuffer(
             start,

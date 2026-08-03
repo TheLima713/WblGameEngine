@@ -5,11 +5,12 @@ libs/manager objs:
 - >Scene
 */
 
-import SimpleMeshRendering from "./examples/3D Rendering/SimpleMeshRendering.js";
+import EffectApplier from "./examples/EffectApplier.js";
 
-let prog = new SimpleMeshRendering();
+
+let prog = new EffectApplier();
 await prog.load()
-prog.loop()
+await prog.loop()
 
 // Persio Quests:
 // - Shader pra recortar um layer da mesh 3d e mostrar o 'interior'

@@ -13,6 +13,7 @@ out vec4 fragColor;
 
 void main() {
     vec4 noise = texture(uDisplace,vUV);
+    noise = (noise * 2.0) - 1.0;
     vec2 shift = vec2(noise * strength + offset);
     
     vec4 pixel = texture(uTexture,vUV + shift);

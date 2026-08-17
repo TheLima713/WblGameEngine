@@ -17,7 +17,6 @@ const shaderParams = {
         uOffset: Color.black
     },
     'edge':{
-        uOrigSize,
         strength: 1,
         uAltMask: 0,
     },

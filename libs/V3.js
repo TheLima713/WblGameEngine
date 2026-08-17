@@ -298,4 +298,10 @@ export default class V3 {
 
         return out;
     }
+    static random() {
+        return new V3(
+            Math.random(),
+            Math.random()
+        )
+    }
 }

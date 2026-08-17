@@ -25,13 +25,23 @@ void main() {
     // tri
     if(vType == 0.0) {
         if(vUV.x + vUV.y > 1.0) discard;
+        if(vRadius > 0.0) {
+            if(vUV.x > vRadius && vUV.y > vRadius && vUV.x + vUV.y < 1.0 - vRadius) discard;
+        }
     }
     // quad
-        //if(vType == 1.0) {}
+    if(vType == 1.0) {
+        if(vRadius > 0.0) {
+            if(vUV.x > vRadius && vUV.y > vRadius && vUV.x < 1.0 - vRadius && vUV.y < 1.0 - vRadius) discard;
+        }
+    }
     // circle
     if(vType == 2.0) {
         vec2 norm = vUV * 2.0 - 1.0;
         if(length(norm) > 1.0) discard;
+        if(vRadius > 0.0) {
+            if(length(norm) < 1.0 - vRadius) discard;
+        }
     }
     //textured quad
     fragColor = vCol;

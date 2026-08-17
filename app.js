@@ -5,12 +5,13 @@ libs/manager objs:
 - >Scene
 */
 
-import EffectApplier from "./examples/EffectApplier.js";
+import IncremenTable from "./examples/IncrementalGame/IncremenTable.js";
 
 
-let prog = new EffectApplier();
-await prog.load()
-await prog.loop()
+let prog = new IncremenTable();
+
+await prog.load();
+await prog.loop();
 
 // Persio Quests:
 // - Shader pra recortar um layer da mesh 3d e mostrar o 'interior'
